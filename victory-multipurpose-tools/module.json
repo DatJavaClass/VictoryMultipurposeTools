@@ -1,0 +1,32 @@
+{
+  "id": "victory-multipurpose-tools",
+  "title": "Victory Multipurpose Tools",
+  "description": "A GM toolbox with an open door: system agnostic tools in one window, a shared dark window base, a socket relay, and a one call registry so your own tools and system packs slot in beside them.",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "Victor S. (DatJavaClass)"
+    }
+  ],
+  "compatibility": {
+    "minimum": "12",
+    "verified": "12.343",
+    "maximum": "13"
+  },
+  "esmodules": [
+    "scripts/vmt.js"
+  ],
+  "styles": [
+    "styles/vmt.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "socket": true,
+  "manifest": "https://github.com/DatJavaClass/VictoryMultipurposeTools/releases/latest/download/module.json",
+  "download": "https://github.com/DatJavaClass/VictoryMultipurposeTools/releases/download/v1.0.0/victory-multipurpose-tools-1.0.0.zip"
+}
