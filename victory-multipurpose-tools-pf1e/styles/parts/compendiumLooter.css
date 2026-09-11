@@ -1,0 +1,11 @@
+/* Looter: status strip, meta column, type tag, stepper */
+#vmtp-compendium-looter .stat { margin: 0; padding: 6px 10px; background: #1f1f1f; border-left: 3px solid #ffcc33; border-radius: 4px; font-size: 0.85em; color: #aaa; }
+#vmtp-compendium-looter .face { width: 40px; height: 40px; flex: 0 0 auto; border: 1px solid #444; border-radius: 4px; object-fit: cover; }
+#vmtp-compendium-looter .meta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+#vmtp-compendium-looter .meta b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#vmtp-compendium-looter .kind { font-size: 0.75em; color: #ffcc33; text-transform: uppercase; }
+#vmtp-compendium-looter .card .row.end { flex: 0 0 auto; flex-wrap: nowrap; }
+#vmtp-compendium-looter button:disabled { opacity: 0.35; cursor: not-allowed; }
+#vmtp-compendium-looter .qty { display: flex; flex-direction: column; width: 34px; flex: 0 0 34px; border: 1px solid #ffcc33; border-radius: 3px; overflow: hidden; }
+#vmtp-compendium-looter .qty button { width: 100%; height: 12px; padding: 0; border: none; border-radius: 0; font-size: 9px; color: #ffcc33; }
+#vmtp-compendium-looter .qty input { flex: 0 0 auto; width: 100%; padding: 2px 0; border: none; border-radius: 0; background: #111; text-align: center; font-size: 12px; font-weight: bold; color: #ffcc33; }

@@ -1,0 +1,12 @@
+{
+  "VMTP.Purge.Title": "Purge Inventory",
+  "VMTP.Purge.Hint": "Delete every physical item on the selected token, features untouched",
+  "VMTP.Purge.Refresh": "Refresh",
+  "VMTP.Purge.Meta": "{n} physical of {total} items",
+  "VMTP.Purge.NoSelection": "Select a token on the canvas, then refresh.",
+  "VMTP.Purge.Run": "Purge",
+  "VMTP.Purge.None": "{name} has no physical items to purge.",
+  "VMTP.Purge.Ask": "Permanently delete <b>{n}</b> physical item(s) from <b>{name}</b>? Feats, spells, classes, races and buffs are kept. This cannot be undone.",
+  "VMTP.Purge.Fail": "Purge failed, see console.",
+  "VMTP.Purge.Done": "Purged {n} item(s) from {name}."
+}

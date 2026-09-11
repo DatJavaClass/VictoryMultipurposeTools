@@ -1,0 +1,22 @@
+{
+  "VMTP.HostileReset.Title": "Hostile Inventory Reset",
+  "VMTP.HostileReset.Hint": "Wipe loot and coin from hostile NPCs on the scene, chosen by name group",
+  "VMTP.HostileReset.Scan": "Scan",
+  "VMTP.HostileReset.All": "All",
+  "VMTP.HostileReset.None": "None",
+  "VMTP.HostileReset.Purge": "Purge Selected",
+  "VMTP.HostileReset.Start": "Press Scan to list hostile NPC groups on this scene. Nothing is written until you confirm.",
+  "VMTP.HostileReset.Summary": "{groups} group(s), {tokens} hostile token(s) on scene",
+  "VMTP.HostileReset.Items": "{count} item(s)",
+  "VMTP.HostileReset.NoLoot": "no loot",
+  "VMTP.HostileReset.Coin": "Carries currency",
+  "VMTP.HostileReset.Footer": "Purging: physical items plus all currency",
+  "VMTP.HostileReset.Selected": "{count} group(s) selected",
+  "VMTP.HostileReset.NoHostiles": "No hostile NPCs found on this scene.",
+  "VMTP.HostileReset.NoneSelected": "No groups selected. Nothing changed.",
+  "VMTP.HostileReset.Ask": "Purge {groups} group(s) across {tokens} token(s)?",
+  "VMTP.HostileReset.AskWarn": "About {items} item(s) plus all currency will be wiped. This cannot be undone.",
+  "VMTP.HostileReset.Cancelled": "Cancelled. Nothing changed.",
+  "VMTP.HostileReset.Done": "Purged {items} item(s) and reset currency on {tokens} token(s).",
+  "VMTP.HostileReset.Failed": "{count} actor(s) failed, see console."
+}

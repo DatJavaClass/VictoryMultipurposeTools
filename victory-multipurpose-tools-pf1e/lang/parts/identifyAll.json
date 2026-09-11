@@ -1,0 +1,11 @@
+{
+  "VMTP.IdentifyAll.Title": "Identify All",
+  "VMTP.IdentifyAll.Hint": "Mark every unidentified item on the selected tokens as identified",
+  "VMTP.IdentifyAll.Refresh": "Refresh",
+  "VMTP.IdentifyAll.Meta": "{n} unidentified",
+  "VMTP.IdentifyAll.NoSelection": "Select one or more tokens on the canvas, then refresh.",
+  "VMTP.IdentifyAll.Run": "Identify All",
+  "VMTP.IdentifyAll.Ask": "Identify every unidentified item on {n} selected actor(s)?",
+  "VMTP.IdentifyAll.Done": "Identified {items} item(s) across {actors} actor(s).",
+  "VMTP.IdentifyAll.None": "No unidentified items found."
+}

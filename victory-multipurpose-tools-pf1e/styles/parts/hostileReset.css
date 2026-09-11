@@ -1,0 +1,10 @@
+/* Hostile Reset: checkbox rows, portrait, loot notes */
+#vmtp-hostile-reset label.pick { flex-direction: row; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #2a2a2a; font-size: 0.9em; font-weight: normal; text-transform: none; letter-spacing: 0; color: #ccc; cursor: pointer; }
+#vmtp-hostile-reset label.pick:hover { background: #2a2a2a; }
+#vmtp-hostile-reset label.pick input { width: 14px; height: 14px; margin: 0; flex: 0 0 auto; accent-color: #ff5555; cursor: pointer; }
+#vmtp-hostile-reset .face { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #333; object-fit: cover; flex: 0 0 auto; }
+#vmtp-hostile-reset .grow { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#vmtp-hostile-reset .loot { font-size: 0.75em; color: #ffaa44; }
+#vmtp-hostile-reset .bare { font-size: 0.75em; color: #666; }
+#vmtp-hostile-reset .coin { font-size: 0.8em; color: #ffcc00; }
+#vmtp-hostile-reset button:disabled, #vmtp-hostile-reset input:disabled { opacity: 0.4; cursor: not-allowed; }

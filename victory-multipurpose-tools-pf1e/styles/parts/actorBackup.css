@@ -1,0 +1,6 @@
+/* Actor Backup: capped target list, seed cards with a trailing button */
+#vmtp-actor-backup .list.targets { flex: 0 1 auto; max-height: 150px; }
+#vmtp-actor-backup .card .grow { flex: 1 1 auto; min-width: 0; }
+#vmtp-actor-backup .card b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#vmtp-actor-backup .card .hint { display: block; }
+#vmtp-actor-backup button:disabled { opacity: 0.4; cursor: not-allowed; }

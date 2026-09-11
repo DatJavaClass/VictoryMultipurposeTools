@@ -1,0 +1,8 @@
+{
+  "VMTP.Inspect.Title": "Inspect Inventory",
+  "VMTP.Inspect.Hint": "Item by type breakdown of the selected token, updates as selection changes",
+  "VMTP.Inspect.NoSelection": "Select a token on the canvas.",
+  "VMTP.Inspect.NoItems": "No items found.",
+  "VMTP.Inspect.Meta": "{items} items, {phys} physical",
+  "VMTP.Inspect.Unid": "unidentified"
+}

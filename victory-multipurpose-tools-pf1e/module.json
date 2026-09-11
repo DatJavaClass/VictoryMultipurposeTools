@@ -1,0 +1,48 @@
+{
+  "id": "victory-multipurpose-tools-pf1e",
+  "title": "Victory Multipurpose Tools - PF1e",
+  "description": "Pathfinder 1e tools for Victory Multipurpose Tools: skill stamping, actor backup seeds, inventory work on tokens, a loot search across the scene, a compendium looter, and actor stamps. Also the worked example of hooking a pack into the toolbox.",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "Victor S. (DatJavaClass)"
+    }
+  ],
+  "compatibility": {
+    "minimum": "12",
+    "verified": "12.343",
+    "maximum": "13"
+  },
+  "relationships": {
+    "requires": [
+      {
+        "id": "victory-multipurpose-tools",
+        "type": "module",
+        "compatibility": {
+          "minimum": "1.0.0"
+        }
+      }
+    ],
+    "systems": [
+      {
+        "id": "pf1",
+        "type": "system"
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/pf1e.js"
+  ],
+  "styles": [
+    "styles/vmtp.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "manifest": "https://github.com/DatJavaClass/VictoryMultipurposeTools/releases/latest/download/module-pf1e.json",
+  "download": "https://github.com/DatJavaClass/VictoryMultipurposeTools/releases/download/v1.0.0/victory-multipurpose-tools-pf1e-1.0.0.zip"
+}

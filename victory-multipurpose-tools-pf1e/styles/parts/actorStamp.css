@@ -1,0 +1,12 @@
+/* Actor Stamp: selected row, radio rows, plan colors */
+#vmtp-actor-stamp .names li.sel { background: rgba(255, 204, 51, 0.2); color: #ffcc33; }
+#vmtp-actor-stamp .modes { display: flex; flex-direction: column; gap: 6px; justify-content: end; }
+#vmtp-actor-stamp label.check { flex-direction: row; align-items: center; gap: 6px; font-weight: normal; text-transform: none; letter-spacing: 0; font-size: 0.85em; color: #ccc; cursor: pointer; }
+#vmtp-actor-stamp label.check input { width: 14px; height: 14px; margin: 0; cursor: pointer; }
+#vmtp-actor-stamp input:disabled, #vmtp-actor-stamp select:disabled { opacity: 0.4; }
+#vmtp-actor-stamp .hint { margin: 0; }
+#vmtp-actor-stamp .card { font-size: 0.85em; color: #ccc; }
+#vmtp-actor-stamp .card b { display: block; font-size: 1.1em; color: #ffcc33; }
+#vmtp-actor-stamp .warn { margin: 0; color: #ffaa00; }
+#vmtp-actor-stamp .gold { color: #88cc88; }
+#vmtp-actor-stamp .rail button { width: 100%; }

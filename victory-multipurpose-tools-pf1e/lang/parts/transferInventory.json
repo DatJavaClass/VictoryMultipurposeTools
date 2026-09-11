@@ -1,0 +1,15 @@
+{
+  "VMTP.Transfer.Title": "Transfer Inventory",
+  "VMTP.Transfer.Hint": "Move every physical item and all coins from the first selected token to the second",
+  "VMTP.Transfer.Refresh": "Refresh",
+  "VMTP.Transfer.Source": "Source (first selected)",
+  "VMTP.Transfer.Destination": "Destination (second selected)",
+  "VMTP.Transfer.Pick": "Not selected.",
+  "VMTP.Transfer.Meta": "{items} physical, coins: {coins}",
+  "VMTP.Transfer.Run": "Transfer",
+  "VMTP.Transfer.NeedTwo": "Select two tokens: source first, destination second.",
+  "VMTP.Transfer.Same": "Both tokens share one actor. Nothing to move.",
+  "VMTP.Transfer.Ask": "Move every physical item and all coins from <b>{src}</b> to <b>{dst}</b>? Features stay put. This cannot be undone.",
+  "VMTP.Transfer.Fail": "Transfer failed, see console.",
+  "VMTP.Transfer.Done": "Moved {items} item(s) and {coins} coin(s) from {src} to {dst}."
+}

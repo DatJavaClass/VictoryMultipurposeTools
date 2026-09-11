@@ -1,0 +1,10 @@
+/* Inspect Inventory: collapsible type groups, unidentified tint */
+#vmtp-inspect-inventory details { flex: 0 0 auto; background: #2a2a2a; border-left: 4px solid #444; border-radius: 4px; }
+#vmtp-inspect-inventory details[open] { border-left-color: #ffcc33; }
+#vmtp-inspect-inventory summary { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.85em; color: #bbb; cursor: pointer; }
+#vmtp-inspect-inventory summary:hover { color: #ffcc33; }
+#vmtp-inspect-inventory summary .badge { margin-left: auto; color: #888; border-color: #555; }
+#vmtp-inspect-inventory ul { margin: 0; padding: 2px 12px 8px 28px; list-style: none; font-size: 0.82em; color: #bbb; }
+#vmtp-inspect-inventory li { padding: 3px 0; border-bottom: 1px solid #1f1f1f; }
+#vmtp-inspect-inventory li:last-child { border-bottom: none; }
+#vmtp-inspect-inventory .unid { font-size: 0.8em; color: #ff9944; }
