@@ -1,0 +1,5 @@
+/* Light Adjuster: number and checkbox fields the shared sheet lacks */
+#vmt-light-adjuster input[type=number] { width: 100%; box-sizing: border-box; padding: 6px 8px; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-family: inherit; font-size: 0.9em; font-weight: normal; }
+#vmt-light-adjuster input[type=checkbox] { width: 14px; height: 14px; margin: 0; cursor: pointer; }
+#vmt-light-adjuster input:disabled, #vmt-light-adjuster select:disabled { opacity: 0.4; }
+#vmt-light-adjuster .warn { color: #ff9999; }

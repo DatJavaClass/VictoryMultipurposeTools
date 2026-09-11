@@ -1,0 +1,6 @@
+/* Linkage Repair: warning card and outcome colors */
+#vmt-linkage-repair .window-content p { margin: 0; line-height: 1.5; }
+#vmt-linkage-repair .card.warn { border-left-color: #cc2222; color: #e08080; }
+#vmt-linkage-repair .card.warn b { display: block; margin-bottom: 4px; color: #ff5555; }
+#vmt-linkage-repair .ok { color: #88cc88; }
+#vmt-linkage-repair .bad { color: #ff9955; }

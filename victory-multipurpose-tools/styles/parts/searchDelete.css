@@ -1,0 +1,8 @@
+/* Search and Delete: warning strip, inline checkbox, multi match cards */
+#vmt-search-delete .hint, #vmt-search-delete .warn { margin: 0; }
+#vmt-search-delete .warn { padding: 6px 8px; background: rgba(255, 80, 80, 0.08); border: 1px solid #ff5555; border-radius: 4px; font-size: 0.8em; color: #ff9999; }
+#vmt-search-delete label.check { flex-direction: row; align-items: center; gap: 6px; align-self: end; font-weight: normal; text-transform: none; letter-spacing: 0; font-size: 0.85em; color: #ccc; }
+#vmt-search-delete label.check input { width: 14px; height: 14px; margin: 0; cursor: pointer; }
+#vmt-search-delete .card.multi { border-left-color: #ff5555; }
+#vmt-search-delete .card ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.85em; color: #ccc; }
+#vmt-search-delete .card label { margin-top: 6px; }

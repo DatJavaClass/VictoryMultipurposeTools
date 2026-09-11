@@ -1,0 +1,8 @@
+/* Actor Repair: portrait, checkbox row, warning strip, failed log rows */
+#vmt-actor-repair .face { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #ff5555; object-fit: cover; flex: 0 0 auto; }
+#vmt-actor-repair .card.act { cursor: default; }
+#vmt-actor-repair .check { flex-direction: row; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0; color: #ccc; cursor: pointer; }
+#vmt-actor-repair .check input { width: 14px; height: 14px; accent-color: #ffcc33; }
+#vmt-actor-repair .warn { padding: 6px 10px; background: rgba(255, 80, 80, 0.08); border: 1px solid #ff5555; border-radius: 4px; color: #ff9999; }
+#vmt-actor-repair input:disabled { opacity: 0.35; cursor: not-allowed; }
+#vmt-actor-repair .card.bad { border-left-color: #ff5555; color: #ff9999; }
