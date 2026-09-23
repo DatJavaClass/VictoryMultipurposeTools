@@ -1,3 +1,5 @@
+DatJavaClass here, I am terrible at writing readme files, great at talking people through things, bad a putting pen to paper or finger to keyboard on how to. So yes, I did have an LLM write this readme. So it could be coherent. So it could be understood. So you could just maybe get an idea of what I build here. IF the fact that a readme is coherent offends you? I am sorry. If not, I hope what I made is useful and I genuinely hope it helps you have fun in your game. Roll on my friends, Roll on.
+
 # Victory Multipurpose Tools
 
 A toolbox with the lid off. Victory Multipurpose Tools puts a strip of tool icons beside the sidebar, gives every tool the same dark window, and lets any other module drop its own tools into the strip with one call. That last part is the point. The Pathfinder 1e pack in this same repo is the worked example, the first drawer, and the one to copy when you build your own.

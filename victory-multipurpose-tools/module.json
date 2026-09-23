@@ -2,7 +2,7 @@
   "id": "victory-multipurpose-tools",
   "title": "Victory Multipurpose Tools",
   "description": "A GM toolbox with an open door: system agnostic tools in one window, a shared dark window base, a socket relay, and a one call registry so your own tools and system packs slot in beside them.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "authors": [
     {
       "name": "Victor S. (DatJavaClass)"
