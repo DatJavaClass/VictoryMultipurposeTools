@@ -5,28 +5,28 @@ const LOOTER = 'compendium-looter', INFO = { actor: 'InfoActor', item: 'InfoItem
 const norm = (s) => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 const isUUID = (s) => /^[A-Za-z0-9]+\.[A-Za-z0-9.]+$/.test(s.trim());
 const tail = (term) => term.split('.').pop();
-const hit = (name, term, mode) => (mode === 'exact' ? norm(name) === norm(term) : norm(name).includes(norm(term)));
-const log = (m, err) => (err ? console.error(`VMT SearchDelete | ${m}`, err) : console.log(`VMT SearchDelete | ${m}`));
+const hit = (name, term, mode) => (mode === 'exact' ? norm(name) === norm(term) : norm(name).includes(norm(term))); /* exact or contains */
+const log = (m, err) => (err ? console.error(`VMT SearchDelete | ${m}`, err) : console.log(`VMT SearchDelete | ${m}`)); /* error or log */
 const api = () => game.modules.get(MODULE_ID)?.api;
 const hasLooter = () => !!api()?.tools().some((t) => t.id === LOOTER);
 const itemTypes = () => [...(game.documentTypes?.Item ?? [])].filter((t) => t !== 'base');
 const typeLabel = (t) => game.i18n.localize(CONFIG.Item?.typeLabels?.[t] ?? t);
-const typeName = (t) => (INFO[t] ? L(`SearchDelete.Type${t[0].toUpperCase()}${t.slice(1)}`) : typeLabel(t));
+const typeName = (t) => (INFO[t] ? L(`SearchDelete.Type${t[0].toUpperCase()}${t.slice(1)}`) : typeLabel(t)); /* info or item type */
 const onScene = () => canvas.tokens?.placeables.filter((t) => t.actor).map((t) => ({ token: t, actor: t.actor })) ?? [];
-const label = (m) => (m.item ? L('SearchDelete.ItemOn', { name: m.item.name, type: m.item.type, actor: m.actor.name }) : L('SearchDelete.ActorLabel', { name: m.actor.name, type: m.actor.type ?? '?', id: m.actor.id.slice(-6) }));
+const label = (m) => (m.item ? L('SearchDelete.ItemOn', { name: m.item.name, type: m.item.type, actor: m.actor.name }) : L('SearchDelete.ActorLabel', { name: m.actor.name, type: m.actor.type ?? '?', id: m.actor.id.slice(-6) })); /* item or actor */
 
 /* World actors per term, paired with tokens. */
 function findActors(term, mode, scene) {
-  const list = isUUID(term) ? game.actors.filter((a) => a.uuid === term || a.id === tail(term)) : game.actors.filter((a) => hit(a.name, term, mode));
+  const list = isUUID(term) ? game.actors.filter((a) => a.uuid === term || a.id === tail(term)) : game.actors.filter((a) => hit(a.name, term, mode)); /* UUID or name */
   return list.map((actor) => ({ actor, token: scene.find((s) => s.actor.id === actor.id)?.token ?? null }));
 }
 
 /* Scene actor items per term, optional type. */
 function findItems(term, mode, scene, type) {
   const out = [], byId = isUUID(term);
-  for (const { token, actor } of scene) for (const item of actor.items) {
-    if (type && item.type !== type) continue;
-    if (byId ? [item.uuid, item.flags?.core?.sourceId, item._stats?.compendiumSource].includes(term) || item.id === tail(term) : hit(item.name, term, mode)) out.push({ item, actor, token });
+  for (const { token, actor } of scene) for (const item of actor.items) { /* in: scene items, out: matches */
+    if (type && item.type !== type) continue; /* other types skipped */
+    if (byId ? [item.uuid, item.flags?.core?.sourceId, item._stats?.compendiumSource].includes(term) || item.id === tail(term) : hit(item.name, term, mode)) out.push({ item, actor, token }); /* id or name match */
   }
   return out;
 }
@@ -40,7 +40,7 @@ class SearchDeleteApp extends VmtApp {
 
   html() {
     const f = this.f, total = this.total(), types = [['actor', typeName('actor')], ['item', typeName('item')], ...itemTypes().map((t) => [t, typeLabel(t)]), ['other', typeName('other')]];
-    const info = INFO[f.type] ? L(`SearchDelete.${INFO[f.type]}`) : L('SearchDelete.InfoTyped', { type: typeLabel(f.type) });
+    const info = INFO[f.type] ? L(`SearchDelete.${INFO[f.type]}`) : L('SearchDelete.InfoTyped', { type: typeLabel(f.type) }); /* info or typed */
     const card = ({ term, matches }, i) => {
       const keep = f.leaveOne && matches.length > 1 && !isUUID(term);
       return `<div class="card ${matches.length > 1 ? 'multi' : ''}"><div class="row"><b>${esc(term)}</b><span class="muted">${matches.length ? L('SearchDelete.Matches', { n: matches.length }) : L('SearchDelete.NoMatch')}</span></div>
@@ -59,50 +59,50 @@ class SearchDeleteApp extends VmtApp {
       ${total ? `<div class="row">${btn('run', `<i class="fas fa-trash-alt"></i> ${L('SearchDelete.Delete', { n: total })}`, 'class="red"')}<span class="hint">${L('SearchDelete.Review')}</span></div>` : ''}`;
   }
 
-  bind(root) { super.bind(root); root.addEventListener('change', (ev) => { if (ev.target.name === 'type') { this.read(); this.groups = null; this.render(); } }); }
+  bind(root) { super.bind(root); root.addEventListener('change', (ev) => { if (ev.target.name === 'type') { this.read(); this.groups = null; this.render(); } }); } /* in: type change, out: reset */
 
   read() { const o = this.form(); for (const k in this.f) if (k in o) this.f[k] = o[k]; return o; } /* known fields to state */
   total() { return this.groups?.reduce((n, g) => n + g.matches.length, 0) ?? 0; }
 
   /* Leave One choices: keep index, all, skip. */
-  final(form) { return this.groups.flatMap(({ matches }, i) => { const k = form[`keep-${i}`]; return k === 'skip' ? [] : k === undefined || k === 'all' ? matches : matches.filter((_, j) => j !== Number(k)); }); }
+  final(form) { return this.groups.flatMap(({ matches }, i) => { const k = form[`keep-${i}`]; return k === 'skip' ? [] : k === undefined || k === 'all' ? matches : matches.filter((_, j) => j !== Number(k)); }); } /* skip, all, or all but kept */
 
   async act(a) {
     const form = this.read();
-    if (a === 'scan') return this.scan();
-    if (a === 'clear') { this.groups = null; this.last = null; return this.render(); }
-    if (a === 'run') return this.run(this.final(form));
+    if (a === 'scan') return this.scan(); /* scan, clear or run picks handler */
+    if (a === 'clear') { this.groups = null; this.last = null; return this.render(); } /* in: clear, out: reset */
+    if (a === 'run') return this.run(this.final(form)); /* in: run, out: delete */
   }
 
   scan() {
     const { type, terms, match } = this.f, list = terms.split(',').map((s) => s.trim()).filter(Boolean), scene = onScene();
-    if (!list.length) return ui.notifications.warn(L('SearchDelete.NoTerms'));
-    const find = (term) => (type === 'actor' ? findActors(term, match, scene) : findItems(term, match, scene, INFO[type] ? null : type));
+    if (!list.length) return ui.notifications.warn(L('SearchDelete.NoTerms')); /* in: no terms, out: warn */
+    const find = (term) => (type === 'actor' ? findActors(term, match, scene) : findItems(term, match, scene, INFO[type] ? null : type)); /* actor or item search */
     this.groups = list.map((term) => ({ term, matches: find(term) }));
-    if (!this.total()) ui.notifications.info(L('SearchDelete.NoMatches'));
+    if (!this.total()) ui.notifications.info(L('SearchDelete.NoMatches')); /* in: no matches, out: info */
     this.render();
   }
 
   /* Deletes per type and scope, one try each. */
   async run(list) {
     const { type, scope } = this.f, terms = this.groups.map((g) => g.term).join(', ');
-    if (!list.length) return ui.notifications.warn(L('SearchDelete.NothingLeft'));
+    if (!list.length) return ui.notifications.warn(L('SearchDelete.NothingLeft')); /* in: nothing left, out: warn */
     let deleted = 0, failed = 0;
-    for (const m of list) {
+    for (const m of list) { /* in: each match, out: counts */
       try {
-        if (m.item) { await m.actor.deleteEmbeddedDocuments('Item', [m.item.id]); log(`Deleted item ${m.item.name} from ${m.actor.name}`); }
+        if (m.item) { /* item, else token and actor */ await m.actor.deleteEmbeddedDocuments('Item', [m.item.id]); log(`Deleted item ${m.item.name} from ${m.actor.name}`); }
         else {
-          if (scope !== 'world' && m.token) { await m.token.document.delete(); log(`Deleted token ${m.actor.name}`); }
-          if (scope !== 'token') { await m.actor.delete(); log(`Deleted world actor ${m.actor.name}`); }
+          if (scope !== 'world' && m.token) { await m.token.document.delete(); log(`Deleted token ${m.actor.name}`); } /* in: not world scope, out: token gone */
+          if (scope !== 'token') { await m.actor.delete(); log(`Deleted world actor ${m.actor.name}`); } /* in: not token scope, out: actor gone */
         }
         deleted++;
       } catch (err) { failed++; log(`Failed on ${label(m)}`, err); }
     }
 
     this.last = { deleted, failed }; this.groups = null;
-    ui.notifications.info(L('SearchDelete.Done', this.last) + (failed ? ` ${L('SearchDelete.FailedHint')}` : ''));
+    ui.notifications.info(L('SearchDelete.Done', this.last) + (failed ? ` ${L('SearchDelete.FailedHint')}` : '')); /* failed adds hint */
     const row = (k, v) => `<p><b>${L(`SearchDelete.${k}`)}:</b> ${esc(v)}</p>`;
-    try { await ChatMessage.create({ content: `<h3>${L('SearchDelete.Report')}</h3>${row('ReportType', typeName(type))}${row('ReportTerms', terms)}${row('ReportDeleted', deleted)}${failed ? row('ReportFailed', failed) : ''}`, whisper: ChatMessage.getWhisperRecipients('GM') }); } catch (err) { log('Chat report failed', err); }
+    try { await ChatMessage.create({ content: `<h3>${L('SearchDelete.Report')}</h3>${row('ReportType', typeName(type))}${row('ReportTerms', terms)}${row('ReportDeleted', deleted)}${failed ? row('ReportFailed', failed) : ''}`, whisper: ChatMessage.getWhisperRecipients('GM') }); } catch (err) { log('Chat report failed', err); } /* in: report failure, out: log */
     log(`Run complete. Deleted ${deleted}, failed ${failed}`);
     this.render();
   }

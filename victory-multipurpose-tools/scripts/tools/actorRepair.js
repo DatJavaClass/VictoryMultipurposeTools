@@ -6,6 +6,7 @@ const log = (...a) => console.log(TAG, ...a), warn = (...a) => console.warn(TAG,
 const strip = (d) => { const o = { ...d }; delete o._id; return o; }; // embedded copy, no id
 const selected = () => { const c = canvas.tokens?.controlled ?? []; return c.length === 1 ? c[0] : null; };
 const dup = (v) => foundry.utils.duplicate(v ?? {});
+const msgOf = (e) => e?.message ?? String(e);
 
 /* One repair run; every failure lands in bad. */
 class Repair {
@@ -20,20 +21,20 @@ class Repair {
 
   async attempt(label, type, id, fn) {
     try { await fn(); return true; }
-    catch (e) { const error = e?.message ?? String(e); this.bad.push({ label, type, id, error }); warn(`corruption: ${label} (${type}): ${error}`); return false; }
+    catch (e) { const error = msgOf(e); this.bad.push({ label, type, id, error }); warn(`corruption: ${label} (${type}): ${error}`); return false; }
   }
 
   /* Fresh disposable actor, old one deleted first. */
   async spawn() {
-    if (this.sac) await this.sac.delete().catch(() => {});
-    this.say(this.sac ? 'Replaced' : 'Spawning');
+    if (this.sac) await this.sac.delete().catch(() => {}); /* in: old sacrifice, out: deleted */
+    this.say(this.sac ? 'Replaced' : 'Spawning'); /* old: Replaced, else Spawning */
     this.sac = await Actor.create({ name: SAC, type: this.actor.type }); this.sacs++;
-    if (!this.sac) throw new Error(L('ActorRepair.SacFail'));
+    if (!this.sac) throw new Error(L('ActorRepair.SacFail')); /* in: create failed, out: throw */
   }
 
   async manual(ids) {
     this.say('ManualMode');
-    const skip = new Set(ids), items = this.items.filter((i) => !skip.has(i.id) && !skip.has(i.uuid)).map((i) => strip(i.data)), n = this.items.length - items.length;
+    const skip = new Set(ids), items = this.items.filter((i) => !skip.has(i.id) && !skip.has(i.uuid)).map((i) => strip(i.data)), n = this.items.length - items.length; /* skipped ids dropped */
     const fresh = await this.build(this.sys, this.flags, this.proto, items);
     return this.finish(fresh, n, L('ActorRepair.ManualNote', { n }));
   }
@@ -43,18 +44,18 @@ class Repair {
     await this.spawn();
     const items = [];
 
-    for (const it of this.items) {
+    for (const it of this.items) { /* in: each item, out: good items */
       const d = strip(it.data), ok = await this.attempt(it.name, it.type, it.id, () => this.sac.createEmbeddedDocuments('Item', [d]));
-      this.say(ok ? 'ItemOk' : 'ItemBad', { name: it.name, type: it.type, error: this.bad.at(-1)?.error ?? '' });
-      if (!ok) { warn(`sacrifice consumed by "${it.name}" (${it.type})`); await this.spawn(); continue; }
+      this.say(ok ? 'ItemOk' : 'ItemBad', { name: it.name, type: it.type, error: this.bad.at(-1)?.error ?? '' }); /* ok: ItemOk, else ItemBad */
+      if (!ok) { warn(`sacrifice consumed by "${it.name}" (${it.type})`); await this.spawn(); continue; } /* failed: respawn, skip item */
       items.push(d);
-      try { const added = this.sac.items.find((i) => i.name === it.name && i.type === it.type); if (added) await this.sac.deleteEmbeddedDocuments('Item', [added.id]); }
+      try { const added = this.sac.items.find((i) => i.name === it.name && i.type === it.type); if (added) await this.sac.deleteEmbeddedDocuments('Item', [added.id]); } /* in: item added, out: removed */
       catch { warn('sacrifice cleanup failed, replacing'); await this.spawn(); }
     }
 
-    const blob = async (key, val) => { const label = L(`ActorRepair.${key}Label`); if (await this.attempt(label, key, key, () => this.sac.update({ [key]: val }))) return val; this.say('BlobBad', { label }); await this.spawn(); return {}; };
+    const blob = async (key, val) => { const label = L(`ActorRepair.${key}Label`); if (await this.attempt(label, key, key, () => this.sac.update({ [key]: val }))) return val; this.say('BlobBad', { label }); await this.spawn(); return {}; }; /* bad blob respawns */
     const system = await blob('system', this.sys), flags = await blob('flags', this.flags), proto = {};
-    for (const [k, v] of Object.entries(this.proto)) if (await this.attempt(`prototypeToken.${k}`, 'prototypeToken', k, () => this.sac.update({ [`prototypeToken.${k}`]: v }))) proto[k] = v; // bad field dropped solo
+    for (const [k, v] of Object.entries(this.proto)) if (await this.attempt(`prototypeToken.${k}`, 'prototypeToken', k, () => this.sac.update({ [`prototypeToken.${k}`]: v }))) proto[k] = v; // in: each key, out: survivors
 
     await this.sac.delete().catch((e) => warn('final sacrifice not deleted:', e));
     log(`canary complete, sacrifices ${this.sacs}, log entries ${this.bad.length}`);
@@ -65,8 +66,8 @@ class Repair {
   async build(system, flags, prototypeToken, items) {
     this.say('Building');
     const fresh = await Actor.create({ name: this.name, type: this.actor.type, img: this.actor.img, system, flags, prototypeToken });
-    if (!fresh) throw new Error(L('ActorRepair.BuildFail'));
-    if (items.length) await fresh.createEmbeddedDocuments('Item', items);
+    if (!fresh) throw new Error(L('ActorRepair.BuildFail')); /* in: create failed, out: throw */
+    if (items.length) await fresh.createEmbeddedDocuments('Item', items); /* in: items, out: embedded */
     return fresh;
   }
 
@@ -97,9 +98,9 @@ class ActorRepairApp extends VmtApp {
 
   html() {
     const a = this.token?.actor, dis = this.busy ? 'disabled' : '';
-    const who = a ? `<div class="card act"><img class="face" src="${esc(a.img)}"><div><b>${esc(a.name)}</b><span class="hint">${L('ActorRepair.Meta', { type: a.type, items: a.items.size, id: a.id })}</span></div></div>` : `<p class="empty">${L('ActorRepair.NoSelection')}</p>`;
+    const who = a ? `<div class="card act"><img class="face" src="${esc(a.img)}"><div><b>${esc(a.name)}</b><span class="hint">${L('ActorRepair.Meta', { type: a.type, items: a.items.size, id: a.id })}</span></div></div>` : `<p class="empty">${L('ActorRepair.NoSelection')}</p>`; /* actor, else empty */
     const go = this.ask ? `<div class="row warn"><span>${L('ActorRepair.Ask', { name: esc(this.name || a?.name) })}</span>${btn('go', `<i class="fas fa-ambulance"></i> ${L('ActorRepair.Yes')}`, 'class="red"')}${btn('no', L('ActorRepair.No'))}</div>`
-      : `<div class="row">${btn('begin', `<i class="fas fa-ambulance"></i> ${L('ActorRepair.Begin')}`, `class="gold" ${dis}`)}</div>`;
+      : `<div class="row">${btn('begin', `<i class="fas fa-ambulance"></i> ${L('ActorRepair.Begin')}`, `class="gold" ${dis}`)}</div>`; /* ask: confirm row, else begin */
     return `<div class="row"><h3>${L('ActorRepair.Selected')}</h3>${btn('refresh', `<i class="fas fa-sync"></i> ${L('ActorRepair.Refresh')}`, `class="end" ${dis}`)}</div>${who}
       <label>${L('ActorRepair.NewName')}<input type="text" name="name" value="${esc(this.name)}" placeholder="${esc(a?.name ?? '')}" ${dis}></label>
       <p class="hint">${L('ActorRepair.RenameNote', { name: esc(a?.name ?? '') })}</p>
@@ -116,11 +117,11 @@ class ActorRepairApp extends VmtApp {
   note(text, bad = false) { this.lines.push({ text, bad }); this.render(); }
 
   async act(a) {
-    if (this.busy) return ui.notifications.warn(L('ActorRepair.Busy'));
+    if (this.busy) return ui.notifications.warn(L('ActorRepair.Busy')); /* in: busy, out: warn */
     this.sync();
     const acts = {
       refresh: () => { this.token = selected(); this.render(); },
-      begin: () => { this.token = selected(); if (!this.token) return ui.notifications.warn(L('ActorRepair.NoSelection')); if (!this.token.actor) return ui.notifications.error(L('ActorRepair.NoActor')); this.ask = true; this.render(); },
+      begin: () => { this.token = selected(); if (!this.token) return ui.notifications.warn(L('ActorRepair.NoSelection')); if (!this.token.actor) return ui.notifications.error(L('ActorRepair.NoActor')); this.ask = true; this.render(); }, /* no token warns, no actor errors */
       no: () => { this.ask = false; this.render(); },
       go: () => this.run(),
     };
@@ -130,8 +131,8 @@ class ActorRepairApp extends VmtApp {
   async run() {
     const t = this.token, r = new Repair(t, this.name || t.actor.name, this), ids = this.ids.split(',').map((s) => s.trim()).filter(Boolean);
     this.busy = true; this.ask = false; this.lines = []; this.note(L('ActorRepair.Reading'));
-    try { await (this.manual ? r.manual(ids) : r.canary()); }
-    catch (e) { warn('run failed:', e); const msg = L('ActorRepair.RunFail', { error: e?.message ?? String(e) }); ui.notifications.error(msg); this.note(msg, true); }
+    try { await (this.manual ? r.manual(ids) : r.canary()); } /* manual mode, else canary */
+    catch (e) { warn('run failed:', e); const msg = L('ActorRepair.RunFail', { error: msgOf(e) }); ui.notifications.error(msg); this.note(msg, true); }
     this.busy = false; this.token = null; this.render();
   }
 }

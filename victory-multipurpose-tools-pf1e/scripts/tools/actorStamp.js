@@ -1,6 +1,6 @@
 /* Actor Stamp: feats, traits, gear, gold onto actors. */
 export default (vmt) => {
-  const { App, store, adapter, ui: { esc, on, btn, opt, wait, confirm, i18n } } = vmt, L = i18n('VMTP');
+  const { App, adapter, ui: { esc, btn, opt, wait, confirm, i18n } } = vmt, L = i18n('VMTP');
   const PACK = 'victory-multipurpose-tools-pf1e', FOLDER = '_Stamps_', FLAG = 'stamps', BANNER = 'vmtp-stamp-banner', NO_STAMP_TYPES = new Set(['class', 'race']);
   const { path: CUR, coins: COINS } = adapter.get().currency, ALT = CUR.replace(/currency$/, 'altCurrency');
   const log = (m, err) => (err ? console.error(`VMTP ActorStamp | ${m}`, err) : console.log(`VMTP ActorStamp | ${m}`));
@@ -15,14 +15,14 @@ export default (vmt) => {
   const prop = (doc, path) => foundry.utils.getProperty(doc, path);
 
   async function ensureFolder() {
-    if (folder()) return folder();
+    if (folder()) return folder(); // exit: folder exists
     try { const f = await Folder.create({ name: FOLDER, type: 'Actor', color: '#ffcc33' }); note('FolderMade', { folder: FOLDER }); return f; } catch (err) { log('Folder create failed', err); return null; }
   }
 
   /* Sheet frame plus banner, replaced every render. */
   function decorate(actor) {
     const raw = actor.sheet?.element, el = raw instanceof HTMLElement ? raw : raw?.[0];
-    if (!el) return;
+    if (!el) return; // exit: sheet not rendered
     el.style.cssText += 'border:2px solid #ffcc33;box-shadow:0 0 14px rgba(255,204,51,0.45);border-radius:6px;';
     el.querySelector(`.${BANNER}`)?.remove();
     const b = document.createElement('div');
@@ -34,10 +34,10 @@ export default (vmt) => {
   }
   async function saveFlow(actor) {
     await actor.sheet.close();
-    if (await confirm(L('ActorStamp.SavedTitle'), esc(L('ActorStamp.Saved', { name: actor.name })))) openApp(actor.id);
+    if (await confirm(L('ActorStamp.SavedTitle'), esc(L('ActorStamp.Saved', { name: actor.name })))) openApp(actor.id); // in: confirmed, out: stamp app opens
   }
   async function openSheet(actor) { await actor.sheet.render(true); await wait(150); decorate(actor); } /* hook decorates, this covers open sheets */
-  for (const h of ['renderActorSheet', 'renderActorSheetV2']) Hooks.on(h, (sheet) => { try { if (isProfile(sheet.actor)) decorate(sheet.actor); } catch (err) { log('Sheet frame failed', err); } });
+  for (const h of ['renderActorSheet', 'renderActorSheetV2']) Hooks.on(h, (sheet) => { try { if (isProfile(sheet.actor)) decorate(sheet.actor); } catch (err) { log('Sheet frame failed', err); } }); // in: two hook names, out: both bound
 
   class ActorStampApp extends App {
     static DEFAULT_OPTIONS = { id: 'vmtp-actor-stamp', window: { title: 'VMTP.ActorStamp.Title' }, position: { width: 660, height: 580 } };
@@ -85,7 +85,7 @@ export default (vmt) => {
         create: () => this.create(false),
         createNpc: () => this.create(true),
         open: () => (stamp ? openSheet(stamp) : need()),
-        delete: async () => { if (!stamp) return need(); await stamp.deleteDialog(); this.plan = null; this.render(); }, /* Foundry's own confirm guards */
+        delete: async () => { if (!stamp) return need(); await stamp.deleteDialog(); this.plan = null; this.render(); }, /* in: stamp, out: Foundry confirms delete */
         review: () => (stamp ? this.review(stamp) : need()),
         apply: () => this.apply(),
         cancel: () => { this.plan = null; note('Cancelled'); this.render(); },
@@ -95,33 +95,33 @@ export default (vmt) => {
 
     async create(npc) {
       let name = this.val('newName').trim();
-      if (!name) return note('NeedName', {}, true);
-      if (npc && !/^NPC\b/i.test(name)) name = `NPC ${name}`;
+      if (!name) return note('NeedName', {}, true); // exit: no name
+      if (npc && !/^NPC\b/i.test(name)) name = `NPC ${name}`; // in: npc kind, out: NPC prefix
       const f = await ensureFolder();
-      if (!f) return;
+      if (!f) return; // exit: no folder
       try { const actor = await Actor.create({ name, type: npc ? 'npc' : 'character', folder: f.id }); this.sel = actor.id; this.plan = null; this.render(); await openSheet(actor); } catch (err) { log(`Create failed for ${name}`, err); }
     }
 
     /* Lane rule, then per target adds, removals, gold. */
     review(stamp) {
       const npc = isNpcStamp(stamp), targets = [], refused = [];
-      if (this.mode === 'pc' && !npc) { const pc = game.actors.get(this.pc); if (pc) targets.push(pc); }
-      else {
+      if (this.mode === 'pc' && !npc) { const pc = game.actors.get(this.pc); if (pc) targets.push(pc); } // in: pc mode, out: one target
+      else { // in: selected mode or npc, out: controlled targets
         const seen = new Set();
-        for (const t of canvas.tokens.controlled) {
+        for (const t of canvas.tokens.controlled) { // in: selected tokens, out: targets or refused
           const a = t.actor;
-          if (!a || isProfile(a) || seen.has(a.uuid)) continue;
+          if (!a || isProfile(a) || seen.has(a.uuid)) continue; // exit: skip profile or dupe
           seen.add(a.uuid);
-          if (npc ? !a.hasPlayerOwner : a.type === 'character') targets.push(a); else refused.push(`${a.name} (${npc ? L('ActorStamp.Owned') : a.type})`);
+          if (npc ? !a.hasPlayerOwner : a.type === 'character') targets.push(a); else refused.push(`${a.name} (${npc ? L('ActorStamp.Owned') : a.type})`); // in: lane match, out: target else refused
         }
       }
-      if (!targets.length) return ui.notifications.warn(L('ActorStamp.NoTargets') + (refused.length ? ` ${L('ActorStamp.Refused', { list: refused.join(', ') })}` : ''));
+      if (!targets.length) return ui.notifications.warn(L('ActorStamp.NoTargets') + (refused.length ? ` ${L('ActorStamp.Refused', { list: refused.join(', ') })}` : '')); // exit: no targets
 
       const stampable = stamp.items.filter((i) => !NO_STAMP_TYPES.has(i.type)), skipped = stamp.items.filter((i) => NO_STAMP_TYPES.has(i.type)).map((i) => `${i.name} (${i.type})`).join(', ');
       const gold = {};
-      for (const c of COINS) { const v = Number(prop(stamp, `${CUR}.${c}`)) || 0; if (v > 0) gold[c] = v; }
+      for (const c of COINS) { const v = Number(prop(stamp, `${CUR}.${c}`)) || 0; if (v > 0) gold[c] = v; } // in: coin names, out: gold map
       const goldStr = Object.entries(gold).map(([c, v]) => `${v} ${c}`).join(', ');
-      const rows = targets.map((target) => {
+      const rows = targets.map((target) => { // in: targets, out: rows
         const flag = foundry.utils.deepClone(target.getFlag(PACK, FLAG)?.[stamp.id] ?? { items: {}, goldGranted: false });
         const adds = stampable.filter((pi) => !(flag.items[pi.id] && target.items.get(flag.items[pi.id])));
         const removals = Object.entries(flag.items).filter(([pid, tid]) => !stamp.items.get(pid) && target.items.get(tid)).map(([pid, tid]) => ({ pid, tid, name: target.items.get(tid).name }));
@@ -134,24 +134,24 @@ export default (vmt) => {
     /* Explicit creates, flagged removals, additive coin paths only. */
     async apply() {
       const p = this.plan;
-      if (!p) return;
+      if (!p) return; // exit: no plan
       let touched = 0, failures = 0, added = 0, removed = 0, deliveries = 0;
-      for (const t of p.rows) {
+      for (const t of p.rows) { // in: plan rows, out: tallies
         try {
           const { target, flag } = t, updates = {};
-          if (t.adds.length) {
-            const made = await target.createEmbeddedDocuments('Item', t.adds.map((i) => { const d = i.toObject(); delete d._id; return d; }), { renderSheet: false });
-            if ((made?.length ?? 0) !== t.adds.length) throw new Error(`expected ${t.adds.length} creations, got ${made?.length ?? 0}`);
-            made.forEach((doc, i) => { flag.items[t.adds[i].id] = doc.id; });
+          if (t.adds.length) { // in: pending adds, out: flag ids set
+            const made = await target.createEmbeddedDocuments('Item', t.adds.map((i) => { const d = i.toObject(); delete d._id; return d; }), { renderSheet: false }); // in: adds, out: docs
+            if ((made?.length ?? 0) !== t.adds.length) throw new Error(`expected ${t.adds.length} creations, got ${made?.length ?? 0}`); // in: count mismatch, out: throw
+            made.forEach((doc, i) => { flag.items[t.adds[i].id] = doc.id; }); // in: created docs, out: flag ids
             added += made.length;
           }
 
-          if (t.removals.length) { await target.deleteEmbeddedDocuments('Item', t.removals.map((r) => r.tid)); for (const r of t.removals) delete flag.items[r.pid]; removed += t.removals.length; }
+          if (t.removals.length) { await target.deleteEmbeddedDocuments('Item', t.removals.map((r) => r.tid)); for (const r of t.removals) delete flag.items[r.pid]; removed += t.removals.length; } // in: stale items, out: deleted and unflagged
 
-          if (t.grantGold) {
-            const alt = prop(target, ALT), base = alt ? ALT : CUR, have = alt ?? prop(target, CUR) ?? {}; /* weightless when the system has it */
-            if (!alt) log(`No weightless currency on ${target.name}, delivering to carried coin`);
-            for (const [c, v] of Object.entries(p.gold)) updates[`${base}.${c}`] = (Number(have[c]) || 0) + v;
+          if (t.grantGold) { // in: gold unpaid, out: coin updates set
+            const alt = prop(target, ALT), base = alt ? ALT : CUR, have = alt ?? prop(target, CUR) ?? {}; /* in: alt, out: base */
+            if (!alt) log(`No weightless currency on ${target.name}, delivering to carried coin`); // in: no alt coin, out: log
+            for (const [c, v] of Object.entries(p.gold)) updates[`${base}.${c}`] = (Number(have[c]) || 0) + v; // in: gold map, out: coin updates
             flag.goldGranted = true; deliveries++;
           }
 
@@ -169,6 +169,6 @@ export default (vmt) => {
   }
 
   let app = null;
-  const openApp = (id) => { (app ??= new ActorStampApp()).render(true); if (id) app.select(id); };
+  const openApp = (id) => { (app ??= new ActorStampApp()).render(true); if (id) app.select(id); }; // in: id, out: select
   return { id: 'actor-stamp', title: 'VMTP.ActorStamp.Title', hint: 'VMTP.ActorStamp.Hint', icon: 'fa-stamp', group: 'VMTP.Group.Stamps', gm: true, open: () => (app ??= new ActorStampApp()).render(true) };
 };

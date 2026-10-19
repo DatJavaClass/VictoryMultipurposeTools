@@ -1,4 +1,4 @@
-/* Dungeon Positioning: card body grows, action buttons sit at the end */
+/* Dungeon Positioning: card body grows, buttons end */
 #vmt-dungeon-positioning .card.act > div { flex: 1 1 auto; min-width: 0; }
 #vmt-dungeon-positioning .card.act > div b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #vmt-dungeon-positioning .card.act > .row { flex: 0 0 auto; }

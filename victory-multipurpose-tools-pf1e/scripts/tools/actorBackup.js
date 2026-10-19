@@ -1,6 +1,6 @@
 /* Actor Backup: seed items that rebuild an actor. */
 export default (vmt) => {
-  const { App, store, adapter, ui: { esc, on, btn, opt, wait, confirm, i18n } } = vmt, L = i18n('VMTP');
+  const { App, adapter, ui: { esc, btn, confirm, i18n } } = vmt, L = i18n('VMTP');
   const MODULE_ID = 'victory-multipurpose-tools-pf1e', FLAG = 'seed', TAG = 'VMTP ActorBackup |', EXCLUDED_TYPES = ['spell'], FALLBACK_IMG = 'icons/magic/time/hourglass-yellow-green.webp';
   const log = (...a) => console.log(TAG, ...a), warn = (...a) => console.warn(TAG, ...a);
   const snap = (item) => item?.flags?.[MODULE_ID]?.[FLAG]?.snapshot ?? null;
@@ -11,10 +11,10 @@ export default (vmt) => {
   /* Snapshot v1: items by source UUID, blob fallback. */
   async function buildSnapshot(actor) {
     const qtyPath = adapter.get().quantity ?? 'system.quantity', kept = actor.items.filter((i) => !EXCLUDED_TYPES.includes(i.type)), items = [];
-    for (const item of kept) {
+    for (const item of kept) { // in: kept items, out: items rows
       const uuid = item.flags?.core?.sourceId || item.flags?.pf1?.sourceUUID || null, base = { name: item.name, type: item.type, qty: foundry.utils.getProperty(item, qtyPath) ?? 1 };
-      if (uuid && await fromUuid(uuid).catch(() => null)) items.push({ mode: 'uuid', uuid, ...base, classLvl: item.type === 'class' ? (item.system?.level ?? 1) : null });
-      else { const data = item.toObject(); delete data._id; items.push({ mode: 'blob', ...base, data }); }
+      if (uuid && await fromUuid(uuid).catch(() => null)) items.push({ mode: 'uuid', uuid, ...base, classLvl: item.type === 'class' ? (item.system?.level ?? 1) : null }); // in: live source, out: uuid row
+      else { const data = item.toObject(); delete data._id; items.push({ mode: 'blob', ...base, data }); } // in: no source, out: blob
     }
     const abilities = Object.fromEntries(Object.entries(actor.system.abilities ?? {}).map(([k, v]) => [k, v.value ?? 10]));
     return { version: 1, createdAt: new Date().toISOString(), actorName: actor.name, actorType: actor.type, tokenImg: actor.prototypeToken?.texture?.src ?? '', portraitImg: actor.img ?? '', abilities, hpMax: actor.system.attributes?.hp?.max ?? 0, biography: actor.system.details?.biography?.value ?? '', items, excludedSpells: actor.items.size - kept.length };
@@ -25,42 +25,42 @@ export default (vmt) => {
     await actor.deleteEmbeddedDocuments('Item', actor.items.filter((i) => i.id !== keepId).map((i) => i.id));
 
     const u = {};
-    for (const [k, v] of Object.entries(snapshot.abilities ?? {})) u['system.abilities.' + k + '.value'] = v;
-    if (snapshot.hpMax) { u['system.attributes.hp.max'] = snapshot.hpMax; u['system.attributes.hp.value'] = snapshot.hpMax; }
-    if (snapshot.portraitImg) u.img = snapshot.portraitImg;
-    if (snapshot.tokenImg) u['prototypeToken.texture.src'] = snapshot.tokenImg;
-    if (snapshot.biography) u['system.details.biography.value'] = snapshot.biography;
-    if (snapshot.actorName) { u.name = snapshot.actorName; u['prototypeToken.name'] = snapshot.actorName; }
+    for (const [k, v] of Object.entries(snapshot.abilities ?? {})) u['system.abilities.' + k + '.value'] = v; /* in: saved scores, out: update paths */
+    if (snapshot.hpMax) { u['system.attributes.hp.max'] = snapshot.hpMax; u['system.attributes.hp.value'] = snapshot.hpMax; } /* in: hpMax set, out: max and value */
+    if (snapshot.portraitImg) u.img = snapshot.portraitImg; /* in: portrait saved, out: img */
+    if (snapshot.tokenImg) u['prototypeToken.texture.src'] = snapshot.tokenImg; /* in: token saved, out: texture */
+    if (snapshot.biography) u['system.details.biography.value'] = snapshot.biography; /* in: bio saved, out: biography */
+    if (snapshot.actorName) { u.name = snapshot.actorName; u['prototypeToken.name'] = snapshot.actorName; } /* in: name saved, out: both names */
     await actor.update(u);
 
     try {
-      for (const scene of game.scenes) for (const t of scene.tokens.filter((t) => t.actorId === actor.id)) {
+      for (const scene of game.scenes) for (const t of scene.tokens.filter((t) => t.actorId === actor.id)) { /* in: actor tokens, out: name and image */
         const tu = {};
-        if (snapshot.actorName) tu.name = snapshot.actorName;
-        if (snapshot.tokenImg) tu['texture.src'] = snapshot.tokenImg;
-        if (Object.keys(tu).length) await t.update(tu);
+        if (snapshot.actorName) tu.name = snapshot.actorName; /* in: name saved, out: token name */
+        if (snapshot.tokenImg) tu['texture.src'] = snapshot.tokenImg; /* in: token saved, out: token texture */
+        if (Object.keys(tu).length) await t.update(tu); /* in: any change, out: token updated */
       }
     } catch (e) { console.warn('VMTP ActorBackup | token sweep:', e); }
 
-    const prep = async (e) => {
-      const src = e.mode === 'uuid' ? await fromUuid(e.uuid).catch(() => null) : null, d = e.mode === 'uuid' ? src?.toObject() : e.mode === 'blob' ? foundry.utils.deepClone(e.data) : null;
-      if (!d) return null;
+    const prep = async (e) => { /* in: row, out: data */
+      const src = e.mode === 'uuid' ? await fromUuid(e.uuid).catch(() => null) : null, d = e.mode === 'uuid' ? src?.toObject() : e.mode === 'blob' ? foundry.utils.deepClone(e.data) : null; /* in: mode, out: data */
+      if (!d) return null; /* exit: unresolved row */
       delete d._id;
-      if (e.qty && d.system?.quantity !== undefined) d.system.quantity = e.qty;
-      if (e.mode === 'uuid' && e.type === 'class' && e.classLvl !== null) d.system.level = e.classLvl;
+      if (e.qty && d.system?.quantity !== undefined) d.system.quantity = e.qty; /* in: qty saved, out: quantity set */
+      if (e.mode === 'uuid' && e.type === 'class' && e.classLvl !== null) d.system.level = e.classLvl; /* in: uuid class, out: level set */
       return d;
     };
     const isParent = (e) => ['race', 'class'].includes(e.type), all = snapshot.items ?? [], failed = [], before = new Set(actor.items.map((i) => i.id)), parentIds = new Set();
-    const add = async (e, ids) => { const d = await prep(e); if (!d) return failed.push(e.name); try { for (const p of await actor.createEmbeddedDocuments('Item', [d])) ids?.add(p.id); } catch { failed.push(e.name); } };
-    for (const e of all.filter(isParent)) await add(e, parentIds);
+    const add = async (e, ids) => { const d = await prep(e); if (!d) return failed.push(e.name); try { for (const p of await actor.createEmbeddedDocuments('Item', [d])) ids?.add(p.id); } catch { failed.push(e.name); } }; /* in: row, out: item */
+    for (const e of all.filter(isParent)) await add(e, parentIds); /* in: parent rows, out: parents created */
 
-    for (let last = -1, calm = 0, i = 0; i < 20 && calm < 2; i++) { // settle until autogen quiets, cap 10s
+    for (let last = -1, calm = 0, i = 0; i < 20 && calm < 2; i++) { /* settle until autogen quiets, cap 10s */
       await new Promise((r) => setTimeout(r, 500));
-      if (actor.items.size === last) calm++; else { calm = 0; last = actor.items.size; }
+      if (actor.items.size === last) calm++; else { calm = 0; last = actor.items.size; } /* in: same count, calm up; else reset */
     }
-    const autoGen = actor.items.filter((i) => !before.has(i.id) && !parentIds.has(i.id)).map((i) => i.id); // strip spares fresh parents
-    if (autoGen.length) await actor.deleteEmbeddedDocuments('Item', autoGen);
-    for (const e of all.filter((e) => !isParent(e))) await add(e);
+    const autoGen = actor.items.filter((i) => !before.has(i.id) && !parentIds.has(i.id)).map((i) => i.id); /* strip spares fresh parents */
+    if (autoGen.length) await actor.deleteEmbeddedDocuments('Item', autoGen); /* in: spares found, out: deleted */
+    for (const e of all.filter((e) => !isParent(e))) await add(e); /* in: other rows, out: items created */
     return failed;
   };
 
@@ -93,29 +93,29 @@ export default (vmt) => {
   /* One seed per actor, read back verified. */
   async function backup(actors) {
     const made = [], failed = [], names = (a) => a.map((m) => m.actor).join(', ');
-    for (const actor of actors) {
+    for (const actor of actors) { // in: targets, out: made or failed
       try {
         const snapshot = await buildSnapshot(actor), seed = await Item.create(seedData(snapshot)), verify = seed ? game.items.get(seed.id) : null;
-        if (!snap(verify)) { failed.push({ actor: actor.name, reason: 'seed failed read back verify' }); continue; }
+        if (!snap(verify)) { failed.push({ actor: actor.name, reason: 'seed failed read back verify' }); continue; } // in: bad read back, out: next actor
         made.push({ actor: actor.name, seed: verify.name, items: snapshot.items.length, excludedSpells: snapshot.excludedSpells });
       } catch (e) { failed.push({ actor: actor.name, reason: e?.message ?? String(e) }); warn('backup failed for', actor.name, e); }
     }
 
-    if (made.length) ui.notifications.info(L('ActorBackup.Backed', { names: names(made) }));
-    if (failed.length) ui.notifications.warn(L('ActorBackup.BackupFail', { names: names(failed) }));
+    if (made.length) ui.notifications.info(L('ActorBackup.Backed', { names: names(made) })); // in: any made, out: info toast
+    if (failed.length) ui.notifications.warn(L('ActorBackup.BackupFail', { names: names(failed) })); // in: any failed, out: warn toast
     log('backup', { made, failed });
   }
 
   /* Same routine the seed carries; world seed stays. */
   async function restore(seed, actor) {
     const s = snap(seed), items = s?.items?.length ?? 0;
-    if (!s?.version || !s?.actorName) return ui.notifications.error(L('ActorBackup.BadSeed'));
-    if (actor.type !== s.actorType) return ui.notifications.error(L('ActorBackup.TypeMismatch', { seed: s.actorType, actor: actor.type }));
-    if (!await confirm(L('ActorBackup.Title'), L('ActorBackup.RestoreAsk', { actor: esc(actor.name), name: esc(s.actorName), items, created: stamp(s.createdAt) }))) return;
+    if (!s?.version || !s?.actorName) return ui.notifications.error(L('ActorBackup.BadSeed')); // exit: invalid seed
+    if (actor.type !== s.actorType) return ui.notifications.error(L('ActorBackup.TypeMismatch', { seed: s.actorType, actor: actor.type })); // exit: wrong type
+    if (!await confirm(L('ActorBackup.Title'), L('ActorBackup.RestoreAsk', { actor: esc(actor.name), name: esc(s.actorName), items, created: stamp(s.createdAt) }))) return; // exit: declined
 
     const failed = await rebuild(actor, s, null), bad = failed.length;
     ui.notifications.info(L('ActorBackup.Restored', { name: s.actorName }) + (bad ? L('ActorBackup.RestoredBad', { n: bad }) : ''));
-    if (bad) warn('restore failed:', failed);
+    if (bad) warn('restore failed:', failed); // in: failures, out: console warn
     try { await ChatMessage.create({ content: `<p><b>${L('ActorBackup.Chat', { name: esc(s.actorName) })}</b>${bad ? ` ${L('ActorBackup.ChatBad', { n: bad })}` : ''}</p>`, whisper: ChatMessage.getWhisperRecipients('GM') }); }
     catch (e) { warn('report not sent:', e); }
   }
@@ -138,11 +138,11 @@ export default (vmt) => {
     }
 
     async act(a, ds) {
-      if (this.busy) return ui.notifications.warn(L('ActorBackup.Busy'));
+      if (this.busy) return ui.notifications.warn(L('ActorBackup.Busy')); // exit: run in flight
       const actors = targeted(), acts = {
         refresh: () => this.render(),
         backup: () => (actors.length ? this.run(() => backup(actors)) : ui.notifications.warn(L('ActorBackup.NoTargets'))),
-        restore: () => { const seed = game.items.get(ds.id); if (!seed) return ui.notifications.warn(L('ActorBackup.SeedGone')); if (actors.length !== 1) return ui.notifications.warn(L('ActorBackup.RestoreNeedOne')); return this.run(() => restore(seed, actors[0])); },
+        restore: () => { const seed = game.items.get(ds.id); if (!seed) return ui.notifications.warn(L('ActorBackup.SeedGone')); if (actors.length !== 1) return ui.notifications.warn(L('ActorBackup.RestoreNeedOne')); return this.run(() => restore(seed, actors[0])); }, // in: seed and one target, out: restore
       };
       return acts[a]?.();
     }

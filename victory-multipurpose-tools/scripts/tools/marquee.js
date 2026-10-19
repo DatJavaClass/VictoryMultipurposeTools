@@ -11,8 +11,8 @@ const presets = store(MODULE_ID, 'marquee', { last: DEFAULT, saved: {} });
 export function show(d) {
   d = { ...DEFAULT, ...d };
   const dur = SPEED[d.speed] ?? '20s', top = VPOS[d.vPosition] ?? '50%', center = `left:50%; top:${top}; transform:translate(-50%,-50%);`, rtl = d.direction === 'right-to-left', btt = d.direction === 'bottom-to-top';
-  const glow = (GLOW[d.glowIntensity] ?? GLOW.medium).split(',').map((g) => `${g.trim()} ${d.shadowColor}`).join(', ') + (d.fontStyle === 'outlined' ? ', -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' : '');
-  const anims = {
+  const glow = (GLOW[d.glowIntensity] ?? GLOW.medium).split(',').map((g) => `${g.trim()} ${d.shadowColor}`).join(', ') + (d.fontStyle === 'outlined' ? ', -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' : ''); /* outlined adds stroke */
+  const anims = { /* type to keyframes */
     'scroll-horizontal': [`@keyframes vmtM { from { transform: translateX(${rtl ? '100vw' : 'calc(-100% - 100vw)'}); } to { transform: translateX(${rtl ? 'calc(-100% - 100vw)' : '100vw'}); } }`, `animation: vmtM ${dur} linear; top:${top};`],
     'scroll-vertical': [`@keyframes vmtM { from { transform: translate(-50%, ${btt ? '100vh' : '-100%'}); } to { transform: translate(-50%, ${btt ? '-100%' : '100vh'}); } }`, `animation: vmtM ${dur} linear; left:50%;`],
     'fade-center': ['@keyframes vmtM { 0% { opacity:0; transform: translate(-50%,-50%) scale(0.5); } 20% { opacity:1; transform: translate(-50%,-50%) scale(1); } 80% { opacity:1; transform: translate(-50%,-50%) scale(1); } 100% { opacity:0; transform: translate(-50%,-50%) scale(1.2); } }', `animation: vmtM ${dur} ease-in-out; ${center}`],
@@ -20,7 +20,7 @@ export function show(d) {
     'typewriter': ['@keyframes vmtM { from { width: 0; } to { width: 100%; } }', `animation: vmtM ${dur} steps(${Math.max(1, d.text.length)}) forwards; ${center} overflow:hidden;`],
     'wave': ['@keyframes vmtM { from { left: -100%; } to { left: 100vw; } } @keyframes vmtW { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }', `animation: vmtM ${dur} linear, vmtW 2s ease-in-out infinite; top:${top};`],
   };
-  const [keys, anim] = anims[d.animationType] ?? anims['scroll-horizontal'];
+  const [keys, anim] = anims[d.animationType] ?? anims['scroll-horizontal']; /* unknown type scrolls */
   const wrap = document.createElement('div'), css = document.createElement('style'), el = document.createElement('div');
   wrap.className = 'vmt-marquee'; wrap.style.cssText = 'position:fixed; inset:0; pointer-events:none; z-index:99999; overflow:hidden;';
   css.textContent = keys;
@@ -54,13 +54,13 @@ class MarqueeApp extends VmtApp {
   read() { const f = this.form(); this.text = f.text; delete f.text; delete f.presetName; this.cur = f; return { ...f, text: this.text }; }
 
   async act(a, ds) {
-    const d = this.read(), need = () => { ui.notifications.warn(L('Marquee.NoText')); return false; };
+    const d = this.read(), need = () => { ui.notifications.warn(L('Marquee.NoText')); return false; }; /* form read, need() warns */
     const acts = {
-      send: async () => { if (!d.text.trim()) return need(); await presets.update((p) => { p.last = this.cur; }); socket.emit('marquee', d); },
-      preview: () => (d.text.trim() ? show(d) : need()),
-      save: async () => { const n = this.val('presetName').trim(); if (!n) return ui.notifications.warn(L('Marquee.NeedName')); await presets.update((p) => { p.saved[n] = this.cur; }); this.render(); },
+      send: async () => { if (!d.text.trim()) return need(); await presets.update((p) => { p.last = this.cur; }); socket.emit('marquee', d); }, /* in: empty text, out: warn */
+      preview: () => (d.text.trim() ? show(d) : need()), /* in: empty, out: warn, else show */
+      save: async () => { const n = this.val('presetName').trim(); if (!n) return ui.notifications.warn(L('Marquee.NeedName')); await presets.update((p) => { p.saved[n] = this.cur; }); this.render(); }, /* in: no name, out: warn */
       load: () => { this.cur = { ...DEFAULT, ...presets.get().saved[ds.name] }; this.render(); },
-      del: async () => { if (await confirm(L('Marquee.Title'), L('Marquee.DeleteAsk', { name: ds.name }))) { await presets.update((p) => { delete p.saved[ds.name]; }); this.render(); } },
+      del: async () => { if (await confirm(L('Marquee.Title'), L('Marquee.DeleteAsk', { name: ds.name }))) { await presets.update((p) => { delete p.saved[ds.name]; }); this.render(); } }, /* in: confirmed, out: removed */
     };
     return acts[a]?.();
   }

@@ -1,20 +1,20 @@
 /* Loot Search: scan scene inventories, hold one item. */
 export default (vmt) => {
-  const { App, store, adapter, ui: { esc, on, btn, opt, wait, confirm, i18n } } = vmt, L = i18n('VMTP');
+  const { App, adapter, ui: { esc, on, btn, i18n } } = vmt, L = i18n('VMTP');
   const PILES = 'item-piles';
   const log = (m, err) => (err ? console.error(`VMTP LootSearch | ${m}`, err) : console.log(`VMTP LootSearch | ${m}`));
   const warn = (k, d) => ui.notifications.warn(L(`LootSearch.${k}`, d)), info = (k, d) => ui.notifications.info(L(`LootSearch.${k}`, d));
   const hasPiles = () => !!game.modules.get(PILES)?.active;
-  const live = (id) => canvas.tokens?.get(id) ?? null; /* token may have left since scan */
+  const live = (id) => canvas.tokens?.get(id) ?? null; /* token may have left */
   const push = (map, k, v) => (map.get(k) ?? map.set(k, []).get(k)).push(v);
 
   /* Player reach: piles, open or unlocked containers, LIMITED. */
-  const reachable = (t) => { const d = t.actor.getFlag(PILES, 'data'); return !!d?.enabled && (d.type === 'pile' || (d.type === 'container' && (d.opened || d.locked === false)) || t.actor.testUserPermission(game.user, 'LIMITED')); };
+  const reachable = (t) => { const d = t.actor.getFlag(PILES, 'data'); return !!d?.enabled && (d.type === 'pile' || (d.type === 'container' && (d.opened || d.locked === false)) || t.actor.testUserPermission(game.user, 'LIMITED')); }; // piles, open, or LIMITED
 
   /* Pan to the owner token and select it. */
   async function view(o) {
     const t = live(o.tokenId);
-    if (!t) return warn('TokenGone');
+    if (!t) return warn('TokenGone'); // exit: token gone
     const d = t.document, g = canvas.grid.size;
     await canvas.animatePan({ x: d.x + (d.width * g) / 2, y: d.y + (d.height * g) / 2, scale: 1.5, duration: 500 });
     t.control({ releaseOthers: true });
@@ -30,10 +30,10 @@ export default (vmt) => {
     scan() {
       const { physical, features, quantity } = adapter.get(), tokens = (canvas.tokens?.placeables ?? []).filter((t) => t.actor && (this.gm || reachable(t)));
       this.cat = { loot: new Map(), features: new Map() }; this.count = tokens.length; this.sel = null; this.q = '';
-      if (!tokens.length) { warn(this.gm ? 'NoTokens' : 'NoPiles'); return false; }
-      for (const t of tokens) for (const item of t.actor.items) {
-        const bucket = this.gm ? (features.includes(item.type) ? 'features' : 'loot') : physical.includes(item.type) ? 'loot' : null; /* players see physical only */
-        if (bucket) push(this.cat[bucket], item.name, { tokenId: t.id, actorName: t.actor.name, itemId: item.id, qty: foundry.utils.getProperty(item, quantity) || 1, img: item.img, type: item.type });
+      if (!tokens.length) { warn(this.gm ? 'NoTokens' : 'NoPiles'); return false; } // exit: nothing reachable
+      for (const t of tokens) for (const item of t.actor.items) { // in: tokens and items, out: catalog buckets
+        const bucket = this.gm ? (features.includes(item.type) ? 'features' : 'loot') : physical.includes(item.type) ? 'loot' : null; /* in: item, out: bucket */
+        if (bucket) push(this.cat[bucket], item.name, { tokenId: t.id, actorName: t.actor.name, itemId: item.id, qty: foundry.utils.getProperty(item, quantity) || 1, img: item.img, type: item.type }); // in: bucket set, out: owner row pushed
       }
       log(`Found ${this.cat.loot.size} unique loot items${this.gm ? ` and ${this.cat.features.size} unique features` : ''} on ${tokens.length} tokens`);
       return true;
@@ -44,9 +44,9 @@ export default (vmt) => {
 
     /* Item rows for the current filter. */
     rows() {
-      const names = this.names(), none = this.gm ? (this.mode === 'loot' ? 'LootSearch.NoLoot' : 'LootSearch.NoFeatures') : 'LootSearch.NoItems';
-      if (!names.length) return `<p class="empty">${L(none)}</p>`;
-      return names.map((n) => { const o = this.cat[this.mode].get(n), qty = o.reduce((s, x) => s + x.qty, 0); return `<div class="card act ${n === this.sel ? 'sel' : ''}" data-act="pick" data-name="${esc(n)}"><img class="pic" src="${esc(o[0].img)}"><span class="grow">${esc(n)}</span><span class="muted">${L(o.length > 1 ? 'LootSearch.Sources' : 'LootSearch.Source', { n: o.length, qty })}</span></div>`; }).join('');
+      const names = this.names(), none = this.gm ? (this.mode === 'loot' ? 'LootSearch.NoLoot' : 'LootSearch.NoFeatures') : 'LootSearch.NoItems'; // in: mode, out: key
+      if (!names.length) return `<p class="empty">${L(none)}</p>`; // exit: empty notice
+      return names.map((n) => { const o = this.cat[this.mode].get(n), qty = o.reduce((s, x) => s + x.qty, 0); return `<div class="card act ${n === this.sel ? 'sel' : ''}" data-act="pick" data-name="${esc(n)}"><img class="pic" src="${esc(o[0].img)}"><span class="grow">${esc(n)}</span><span class="muted">${L(o.length > 1 ? 'LootSearch.Sources' : 'LootSearch.Source', { n: o.length, qty })}</span></div>`; }).join(''); // in: names, out: card html
     }
 
     /* Owner rows for the selected name. */
@@ -90,18 +90,18 @@ export default (vmt) => {
         copy: () => this.take(o, 'copy'),
         grab: () => this.take(o, 'grab'),
         put: () => this.put(),
-        drop: () => { if (!this.hand) return warn('HandEmpty'); info('Dropped', { name: this.hand.data.name }); this.hand = null; this.render(); },
+        drop: () => { if (!this.hand) return warn('HandEmpty'); info('Dropped', { name: this.hand.data.name }); this.hand = null; this.render(); }, // in: hand empty, warn; else drop
       };
       return acts[a]?.();
     }
 
     /* Copy or pick up into the Hand. */
     async take(o, action) {
-      if (this.hand) return warn('HandFull');
+      if (this.hand) return warn('HandFull'); // exit: hand occupied
       const item = live(o.tokenId)?.actor?.items.get(o.itemId);
-      if (!item) return warn('ItemGone');
+      if (!item) return warn('ItemGone'); // exit: item gone
       const hand = { data: item.toObject(), from: o.actorName, action };
-      if (action === 'grab') {
+      if (action === 'grab') { // in: pick up, out: source item deleted
         try { await item.actor.deleteEmbeddedDocuments('Item', [item.id]); } catch (err) { log(`Pick up failed on ${o.actorName}`, err); return ui.notifications.error(L('LootSearch.PickUpFail')); }
         this.forget(o);
       }
@@ -113,14 +113,14 @@ export default (vmt) => {
     /* Owner entry leaves the catalog after pick up. */
     forget(o) {
       const map = this.cat[this.mode], list = map.get(this.sel).filter((x) => x !== o);
-      if (list.length) map.set(this.sel, list); else { map.delete(this.sel); this.sel = null; }
+      if (list.length) map.set(this.sel, list); else { map.delete(this.sel); this.sel = null; } // in: owners left, else drop name
     }
 
     /* Put the held item on the selected token. */
     async put() {
-      if (!this.hand) return warn('HandEmpty');
+      if (!this.hand) return warn('HandEmpty'); // exit: hand empty
       const c = canvas.tokens.controlled, t = c[0];
-      if (c.length !== 1) return warn(c.length ? 'OnlyOne' : 'SelectOne');
+      if (c.length !== 1) return warn(c.length ? 'OnlyOne' : 'SelectOne'); // exit: not exactly one token
       try { await t.actor.createEmbeddedDocuments('Item', [this.hand.data]); } catch (err) { log(`Put down failed on ${t.name}`, err); return ui.notifications.error(L('LootSearch.PutDownFail')); }
       info('PutDownDone', { name: this.hand.data.name, token: t.name });
       this.hand = null;

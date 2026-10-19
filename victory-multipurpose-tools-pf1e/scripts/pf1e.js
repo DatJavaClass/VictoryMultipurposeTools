@@ -11,7 +11,7 @@ import compendiumLooter from './tools/compendiumLooter.js';
 import actorStamp from './tools/actorStamp.js';
 
 export const MODULE_ID = 'victory-multipurpose-tools-pf1e';
-const TOOLS = [skillStamp, actorBackup, hostileReset, identifyAll, inspectInventory, transferInventory, purgeInventory, lootSearch, compendiumLooter, actorStamp];
+const TOOLS = [skillStamp, actorBackup, hostileReset, identifyAll, inspectInventory, transferInventory, purgeInventory, lootSearch, compendiumLooter, actorStamp]; // tool factories
 
 /* What pf1 calls things, read via vmt.adapter. */
 export const PF1 = {
@@ -26,5 +26,5 @@ export const PF1 = {
 
 Hooks.on('vmt.ready', (vmt) => {
   vmt.adapter.set(PF1);
-  for (const make of TOOLS) vmt.register(make(vmt));
+  for (const make of TOOLS) vmt.register(make(vmt)); // in: factories, out: tools registered
 });

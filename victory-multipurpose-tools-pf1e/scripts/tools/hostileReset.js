@@ -1,17 +1,18 @@
 /* Hostile Inventory Reset: wipe hostile loot by group. */
 export default (vmt) => {
-  const { App, store, adapter, ui: { esc, on, btn, opt, wait, confirm, i18n } } = vmt, L = i18n('VMTP');
+  const { App, adapter, ui: { esc, on, btn, confirm, i18n } } = vmt, L = i18n('VMTP');
+
   const HOSTILE_DISPOSITION = -1, log = (...m) => console.log('VMTP HostileReset |', ...m);
-  const coinPaths = (actor) => { const { path, coins } = adapter.get().currency; return coins.map((c) => `${path}.${c}`).filter((p) => foundry.utils.getProperty(actor, p) !== undefined); };
+  const coinPaths = (actor) => { const { path, coins } = adapter.get().currency; return coins.map((c) => `${path}.${c}`).filter((p) => foundry.utils.getProperty(actor, p) !== undefined); }; // in: actor, out: paths
   const loot = (actor) => actor.items.filter((i) => adapter.get().physical.includes(i.type));
-  const n = (list, key) => list.reduce((s, g) => s + g[key].length, 0); /* sum of a list field */
+  const n = (list, key) => list.reduce((s, g) => s + g[key].length, 0); /* in: groups, out: total */
 
   /* Hostile NPC tokens grouped by name, biggest first. */
   function scan() {
     const groups = new Map();
-    for (const t of canvas.tokens.placeables) {
+    for (const t of canvas.tokens.placeables) { // in: scene tokens, out: groups by name
       const a = t.actor;
-      if (!a || a.type !== 'npc' || t.document.disposition !== HOSTILE_DISPOSITION) continue;
+      if (!a || a.type !== 'npc' || t.document.disposition !== HOSTILE_DISPOSITION) continue; // exit: not hostile npc
       const g = groups.get(a.name) ?? groups.set(a.name, { name: a.name, img: a.img, tokens: [], actors: new Map(), items: 0, coin: false }).get(a.name);
       g.tokens.push(t);
       if (g.actors.has(a.id)) continue; /* linked tokens share one actor */
@@ -39,7 +40,7 @@ export default (vmt) => {
     }
 
     picked() { return L('HostileReset.Selected', { count: this.groups?.filter((g) => g.on).length ?? 0 }); }
-    check(on) { for (const g of this.groups ?? []) g.on = on; }
+    check(on) { for (const g of this.groups ?? []) g.on = on; } // in: all or none, out: flags set
 
     bind(root) {
       super.bind(root);
@@ -49,35 +50,35 @@ export default (vmt) => {
     /* Confirm with the casualty list, then wipe. */
     async purge() {
       const sel = this.groups?.filter((g) => g.on) ?? [];
-      if (!sel.length) return ui.notifications.warn(L('HostileReset.NoneSelected'));
+      if (!sel.length) return ui.notifications.warn(L('HostileReset.NoneSelected')); // exit: nothing picked
       const tokens = n(sel, 'tokens'), body = `${L('HostileReset.Ask', { groups: sel.length, tokens })}<br>${sel.map((g) => `${esc(g.name)} (${g.tokens.length})`).join(', ')}<br><b>${L('HostileReset.AskWarn', { items: sel.reduce((s, g) => s + g.items, 0) })}</b>`;
-      if (!(await confirm(L('HostileReset.Title'), body))) return ui.notifications.info(L('HostileReset.Cancelled'));
+      if (!(await confirm(L('HostileReset.Title'), body))) return ui.notifications.info(L('HostileReset.Cancelled')); // exit: declined
 
       let items = 0, failed = 0;
-      for (const g of sel) for (const a of g.actors) {
+      for (const g of sel) for (const a of g.actors) { // in: picked groups, out: wiped actors
         const ids = loot(a).map((i) => i.id), cur = Object.fromEntries(coinPaths(a).map((p) => [p, 0]));
         try {
-          if (ids.length) await a.deleteEmbeddedDocuments('Item', ids);
-          if (Object.keys(cur).length) await a.update(cur);
+          if (ids.length) await a.deleteEmbeddedDocuments('Item', ids); // in: loot found, out: items deleted
+          if (Object.keys(cur).length) await a.update(cur); // in: coins found, out: zeroed
           items += ids.length;
         } catch (e) { failed++; console.error('VMTP HostileReset |', `Failed on "${a.name}":`, e); }
       }
 
       log(`Done. Groups: ${sel.length}, Tokens: ${tokens}, Items removed: ${items}, Failed: ${failed}`);
       ui.notifications.info(L('HostileReset.Done', { items, tokens }));
-      if (failed) ui.notifications.warn(L('HostileReset.Failed', { count: failed }));
+      if (failed) ui.notifications.warn(L('HostileReset.Failed', { count: failed })); // in: failures, out: warn toast
       this.groups = scan();
     }
 
     async act(a) {
-      if (this.busy) return;
+      if (this.busy) return; // exit: run in flight
       const acts = {
-        scan: () => { this.groups = scan(); if (!this.groups.length) ui.notifications.warn(L('HostileReset.NoHostiles')); },
+        scan: () => { this.groups = scan(); if (!this.groups.length) ui.notifications.warn(L('HostileReset.NoHostiles')); }, // in: no groups, out: warn toast
         all: () => this.check(true),
         none: () => this.check(false),
         purge: () => this.purge(),
       };
-      if (!acts[a]) return;
+      if (!acts[a]) return; // exit: unknown action
       this.busy = true;
       try { await acts[a](); } finally { this.busy = false; this.render(); }
     }

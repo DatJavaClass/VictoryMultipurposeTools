@@ -1,12 +1,12 @@
 /* Token Finder: search all scenes, jump to hit. */
 import { L, esc, btn, wait, VmtApp } from '../core.js';
 
-const scan = (needle) => { const n = needle.toLowerCase(), out = []; for (const scene of game.scenes) for (const token of scene.tokens) if ((token.name ?? '').toLowerCase().includes(n)) out.push({ scene, token }); return out; };
+const scan = (needle) => { const n = needle.toLowerCase(), out = []; for (const scene of game.scenes) for (const token of scene.tokens) if ((token.name ?? '').toLowerCase().includes(n)) out.push({ scene, token }); return out; }; /* in: tokens, out: hits */
 
 /* Activate or view, then pan to center. */
 async function jump({ scene, token }) {
-  if (scene.id !== game.scenes.active?.id) { await scene.activate(); await wait(800); }
-  else if (scene.id !== canvas.scene?.id) { await scene.view(); await wait(400); }
+  if (scene.id !== game.scenes.active?.id) { await scene.activate(); await wait(800); } /* activate, else view, else stay */
+  else if (scene.id !== canvas.scene?.id) { await scene.view(); await wait(400); } /* in: viewed elsewhere, out: view */
   const g = canvas.scene?.grid?.size ?? 100;
   canvas.animatePan({ x: token.x + token.width * g / 2, y: token.y + token.height * g / 2, scale: 1, duration: 600 });
 }
@@ -23,11 +23,11 @@ class TokenFinderApp extends VmtApp {
       <div class="list" data-keep="list">${this.hits === null ? `<p class="empty">${L('TokenFinder.Start')}</p>` : rows || `<p class="empty">${L('TokenFinder.None', { needle: this.needle })}</p>`}</div>`;
   }
 
-  bind(root) { super.bind(root); root.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.name === 'needle') this.act('find'); }); }
+  bind(root) { super.bind(root); root.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.name === 'needle') this.act('find'); }); } /* in: Enter on needle, out: find */
 
   async act(a, ds) {
-    if (a === 'find') { this.needle = this.val('needle').trim(); this.hits = this.needle ? scan(this.needle) : null; return this.render(); }
-    if (a === 'jump') return jump(this.hits[ds.idx]);
+    if (a === 'find') { /* find action renders hits */ this.needle = this.val('needle').trim(); this.hits = this.needle ? scan(this.needle) : null; return this.render(); }
+    if (a === 'jump') return jump(this.hits[ds.idx]); /* jump action pans to token */
   }
 }
 

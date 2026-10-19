@@ -22,7 +22,7 @@ Hooks.once('init', () => {
 
 /* API surface, see README Hooking in. */
 Hooks.once('ready', () => {
-  TOOLS.forEach(register);
+  TOOLS.forEach(register); /* in: each tool, out: dock entries */
   const api = { register, open, toggle, tools: usable, adapter, socket, store, App: VmtApp, ui: { esc, on, btn, opt, wait, confirm, i18n }, marquee: (d) => socket.emit('marquee', d), marqueeLocal: marqueeShow, importPositioning };
   game.modules.get(MODULE_ID).api = api;
   Hooks.callAll('vmt.ready', api);

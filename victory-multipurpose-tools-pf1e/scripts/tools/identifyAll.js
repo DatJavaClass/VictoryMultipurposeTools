@@ -15,16 +15,16 @@ export default (vmt) => {
     }
 
     async act(a) {
-      if (a === 'refresh') return this.render();
-      if (a !== 'run') return;
+      if (a === 'refresh') return this.render(); // exit: redraw only
+      if (a !== 'run') return; // exit: unknown action
       const actors = sel();
-      if (!actors.length) return ui.notifications.warn(L('IdentifyAll.NoSelection'));
-      if (!(await confirm(L('IdentifyAll.Title'), L('IdentifyAll.Ask', { n: actors.length })))) return;
+      if (!actors.length) return ui.notifications.warn(L('IdentifyAll.NoSelection')); // exit: nothing selected
+      if (!(await confirm(L('IdentifyAll.Title'), L('IdentifyAll.Ask', { n: actors.length })))) return; // exit: declined
       let items = 0, touched = 0;
 
-      for (const actor of actors) {
+      for (const actor of actors) { // in: selected actors, out: tallies
         const upd = unid(actor).map((i) => ({ _id: i.id, [adapter.get().identified]: true }));
-        if (!upd.length) continue;
+        if (!upd.length) continue; // exit: none unidentified
         try { await actor.updateEmbeddedDocuments('Item', upd); items += upd.length; touched++; }
         catch (e) { console.warn(TAG, `${actor.name} failed:`, e); }
       }

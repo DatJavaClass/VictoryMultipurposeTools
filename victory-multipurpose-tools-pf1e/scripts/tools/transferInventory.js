@@ -3,7 +3,7 @@ export default (vmt) => {
   const { App, adapter, ui: { esc, btn, confirm, i18n } } = vmt, L = i18n('VMTP'), TAG = 'VMTP Transfer |';
   const sel = () => (canvas.tokens?.controlled ?? []).filter((t) => t.actor).map((t) => t.actor);
   const physical = (actor) => actor.items.filter((i) => adapter.get().physical.includes(i.type));
-  const coins = (actor) => { const { path, coins: names } = adapter.get().currency; return Object.fromEntries(names.map((c) => [c, Number(foundry.utils.getProperty(actor, `${path}.${c}`) || 0)])); };
+  const coins = (actor) => { const { path, coins: names } = adapter.get().currency; return Object.fromEntries(names.map((c) => [c, Number(foundry.utils.getProperty(actor, `${path}.${c}`) || 0)])); }; // in: actor, out: coins
   const purse = (actor) => Object.entries(coins(actor)).filter(([, n]) => n).map(([c, n]) => `${n} ${c}`).join(', ') || '0';
   const strip = (i) => { const d = i.toObject(); delete d._id; return d; }; // embedded copy, no id
 
@@ -19,18 +19,18 @@ export default (vmt) => {
     }
 
     async act(a) {
-      if (a === 'refresh') return this.render();
-      if (a !== 'run') return;
+      if (a === 'refresh') return this.render(); // exit: redraw only
+      if (a !== 'run') return; // exit: unknown action
       const [src, dst] = sel();
-      if (!src || !dst) return ui.notifications.warn(L('Transfer.NeedTwo'));
-      if (src === dst) return ui.notifications.warn(L('Transfer.Same'));
-      if (!(await confirm(L('Transfer.Title'), L('Transfer.Ask', { src: esc(src.name), dst: esc(dst.name) })))) return;
+      if (!src || !dst) return ui.notifications.warn(L('Transfer.NeedTwo')); // exit: under two tokens
+      if (src === dst) return ui.notifications.warn(L('Transfer.Same')); // exit: same actor
+      if (!(await confirm(L('Transfer.Title'), L('Transfer.Ask', { src: esc(src.name), dst: esc(dst.name) })))) return; // exit: declined
       const { path, coins: names } = adapter.get().currency, from = coins(src), to = coins(dst), items = physical(src), moved = Object.values(from).reduce((s, n) => s + n, 0);
 
       try {
         await dst.update({ [path]: Object.fromEntries(names.map((c) => [c, to[c] + from[c]])) });
         await src.update({ [path]: Object.fromEntries(names.map((c) => [c, 0])) });
-        if (items.length) { await dst.createEmbeddedDocuments('Item', items.map(strip)); await src.deleteEmbeddedDocuments('Item', items.map((i) => i.id)); }
+        if (items.length) { await dst.createEmbeddedDocuments('Item', items.map(strip)); await src.deleteEmbeddedDocuments('Item', items.map((i) => i.id)); } // in: items found, out: moved and removed
       } catch (e) { console.error(TAG, 'transfer failed:', e); return ui.notifications.error(L('Transfer.Fail')); }
 
       console.log(TAG, `moved ${items.length} items and ${moved} coins from ${src.name} to ${dst.name}`);

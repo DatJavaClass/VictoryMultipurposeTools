@@ -1,6 +1,6 @@
 /* Skill Stamp: custom pf1 skills stamped onto actors. */
 export default (vmt) => {
-  const { App, store, adapter, ui: { esc, on, btn, opt, wait, confirm, i18n } } = vmt, L = i18n('VMTP');
+  const { App, store, ui: { esc, on, btn, opt, confirm, i18n } } = vmt, L = i18n('VMTP');
   const MODULE_ID = 'victory-multipurpose-tools-pf1e', FLAG = 'skillKeys', ABL = ['str', 'dex', 'con', 'int', 'wis', 'cha'], TYPES = ['character', 'npc'];
   const SCOPES = { selected: 'ScopeSelected', pcs: 'ScopePcs', npcs: 'ScopeNpcs', all: 'ScopeAll' }, BLANK = { name: '', key: '', ability: 'int', rt: false, acp: false };
   const skills = store(MODULE_ID, 'skillStamp', { skills: [] });
@@ -10,26 +10,26 @@ export default (vmt) => {
   const yn = (b) => L(b ? 'SkillStamp.Yes' : 'SkillStamp.No');
   const scopeLabel = (s) => L(`SkillStamp.${SCOPES[s]}`);
   const skillData = (d) => ({ name: d.name, ability: d.ability, rank: 0, notes: '', mod: 0, rt: d.rt, cs: false, acp: d.acp, background: false, subSkills: {} }); /* full pf1 skill shape */
-  const coreKeys = () => { const c = new Set(Object.keys(pf1?.config?.skills ?? {})); if (!c.size) ui.notifications.error(L('SkillStamp.NoCore')); return c.size ? c : null; }; /* hard blacklist, read fresh */
-  const uniq = (list) => { const seen = new Set(); return list.filter((a) => a && TYPES.includes(a.type) && !seen.has(a.uuid) && seen.add(a.uuid)); };
-  const targetsFor = (scope) => (scope === 'selected' ? uniq(canvas.tokens.controlled.map((t) => t.actor)) : game.actors.filter((a) => (scope === 'all' ? TYPES : [scope === 'pcs' ? 'character' : 'npc']).includes(a.type)));
+  const coreKeys = () => { const c = new Set(Object.keys(pf1?.config?.skills ?? {})); if (!c.size) ui.notifications.error(L('SkillStamp.NoCore')); return c.size ? c : null; }; /* in: config, out: keys */
+  const uniq = (list) => { const seen = new Set(); return list.filter((a) => a && TYPES.includes(a.type) && !seen.has(a.uuid) && seen.add(a.uuid)); }; // in: actors, out: unique
+  const targetsFor = (scope) => (scope === 'selected' ? uniq(canvas.tokens.controlled.map((t) => t.actor)) : game.actors.filter((a) => (scope === 'all' ? TYPES : [scope === 'pcs' ? 'character' : 'npc']).includes(a.type))); // in: scope, out: actors
 
   /* Reconcile: per key writes, "-=" removals, flag refreshed. */
   async function stamp(targets, list, scope, CORE) {
     const byKey = new Map(list.map((s) => [s.key, s])), n = { added: 0, updated: 0, removed: 0, failed: 0 };
-    for (const actor of targets) {
+    for (const actor of targets) { // in: target actors, out: n tallies
       try {
         const u = {}, cur = actor.system?.skills ?? {}, managed = actor.getFlag(MODULE_ID, FLAG) ?? [];
-        for (const d of list) {
+        for (const d of list) { // in: defined skills, out: update paths
           if (CORE.has(d.key)) continue; // never touch core, ever
           const c = cur[d.key], p = `system.skills.${d.key}`;
-          if (!c) { u[p] = skillData(d); n.added++; continue; }
+          if (!c) { u[p] = skillData(d); n.added++; continue; } // in: missing skill, out: full add
           const diff = [['name', d.name], ['ability', d.ability], ['rt', d.rt], ['acp', d.acp]].filter(([f, v]) => c[f] !== v); // rank and notes untouched
-          for (const [f, v] of diff) u[`${p}.${f}`] = v;
-          if (diff.length) n.updated++;
+          for (const [f, v] of diff) u[`${p}.${f}`] = v; // in: changed fields, out: field paths
+          if (diff.length) n.updated++; // in: diffs found, out: updated count
         }
 
-        for (const k of managed) if (!byKey.has(k) && cur[k] && !CORE.has(k)) { u[`system.skills.-=${k}`] = null; n.removed++; } // managed, unlisted, present, not core
+        for (const k of managed) if (!byKey.has(k) && cur[k] && !CORE.has(k)) { u[`system.skills.-=${k}`] = null; n.removed++; } // in: managed, unlisted, present, not core
         u[`flags.${MODULE_ID}.${FLAG}`] = [...byKey.keys()];
         await actor.update(u);
       } catch (err) { n.failed++; log(`Stamp failed on ${actor.name}`, err); }
@@ -68,7 +68,7 @@ export default (vmt) => {
     /* Key suggested from first word until hand edited. */
     bind(root) {
       super.bind(root);
-      on(root, 'input', '[name="name"]', (el) => { const k = root.querySelector('[name="key"]'); if (!this.edit && !k.dataset.touched) k.value = cleanKey(el.value.split(/\s+/)[0]).slice(0, 8); });
+      on(root, 'input', '[name="name"]', (el) => { const k = root.querySelector('[name="key"]'); if (!this.edit && !k.dataset.touched) k.value = cleanKey(el.value.split(/\s+/)[0]).slice(0, 8); }); // in: new and untouched key, out: suggestion
       on(root, 'input', '[name="key"]', (el) => { el.dataset.touched = '1'; });
     }
 
@@ -78,9 +78,9 @@ export default (vmt) => {
         cancel: () => { this.edit = null; this.msg = ''; this.render(); },
         edit: () => { this.edit = ds.key; this.msg = ''; this.render(); },
         del: async () => {
-          if (!(await confirm(L('SkillStamp.Title'), L('SkillStamp.DeleteAsk', { key: ds.key })))) return;
-          try { await skills.update((d) => { d.skills = d.skills.filter((s) => s.key !== ds.key); }); this.msg = L('SkillStamp.Deleted', { key: ds.key }); log(`Deleted ${ds.key}`); } catch (err) { this.msg = L('SkillStamp.SaveFail', { error: err.message }); log('Delete failed', err); }
-          if (this.edit === ds.key) this.edit = null;
+          if (!(await confirm(L('SkillStamp.Title'), L('SkillStamp.DeleteAsk', { key: ds.key })))) return; // exit: declined
+          try { await skills.update((d) => { d.skills = d.skills.filter((s) => s.key !== ds.key); }); this.msg = L('SkillStamp.Deleted', { key: ds.key }); log(`Deleted ${ds.key}`); } catch (err) { this.msg = L('SkillStamp.SaveFail', { error: err.message }); log('Delete failed', err); } // in: confirmed, out: skill removed
+          if (this.edit === ds.key) this.edit = null; // in: deleted key edited, out: cleared
           this.render();
         },
         stamp: () => this.stamp(),
@@ -91,12 +91,12 @@ export default (vmt) => {
     /* Add or update by key, core keys refused. */
     async commit() {
       const f = this.form(), name = f.name.trim(), key = cleanKey(this.edit ?? f.key), d = { name, key, ability: f.ability, rt: !!f.rt, acp: !!f.acp }, CORE = coreKeys();
-      if (!CORE) return;
-      const bad = !name ? 'NeedName' : !key ? 'NeedKey' : CORE.has(key) ? 'CoreKey' : null;
-      if (bad) return ui.notifications.warn(L(`SkillStamp.${bad}`, { key }));
+      if (!CORE) return; // exit: core keys unreadable
+      const bad = !name ? 'NeedName' : !key ? 'NeedKey' : CORE.has(key) ? 'CoreKey' : null; // in: form, out: error
+      if (bad) return ui.notifications.warn(L(`SkillStamp.${bad}`, { key })); // exit: failed check
       try {
         let was;
-        await skills.update((s) => { was = s.skills.findIndex((x) => x.key === key); if (was >= 0) s.skills[was] = d; else s.skills.push(d); });
+        await skills.update((s) => { was = s.skills.findIndex((x) => x.key === key); if (was >= 0) s.skills[was] = d; else s.skills.push(d); }); // in: key found, replace; else push
         this.msg = L(was >= 0 ? 'SkillStamp.Updated' : 'SkillStamp.Saved', { name }); this.edit = null; log(`Committed ${key}`);
       } catch (err) { this.msg = L('SkillStamp.SaveFail', { error: err.message }); log('Commit failed', err); }
       this.render();
@@ -105,9 +105,9 @@ export default (vmt) => {
     /* Confirm, then reconcile every actor in scope. */
     async stamp() {
       const scope = this.scope = this.val('scope') || 'selected', list = skills.get().skills, targets = targetsFor(scope), CORE = coreKeys();
-      if (!CORE) return;
-      if (!targets.length) return ui.notifications.warn(L('SkillStamp.NoTargets'));
-      if (!(await confirm(L('SkillStamp.Title'), L('SkillStamp.StampAsk', { n: targets.length, skills: list.length, scope: scopeLabel(scope) })))) return;
+      if (!CORE) return; // exit: core keys unreadable
+      if (!targets.length) return ui.notifications.warn(L('SkillStamp.NoTargets')); // exit: no targets
+      if (!(await confirm(L('SkillStamp.Title'), L('SkillStamp.StampAsk', { n: targets.length, skills: list.length, scope: scopeLabel(scope) })))) return; // exit: declined
       this.msg = await stamp(targets, list, scope, CORE);
       this.render();
     }

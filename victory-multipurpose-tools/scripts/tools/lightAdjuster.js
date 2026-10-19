@@ -7,7 +7,7 @@ const ANIM = ['torch', 'pulse', 'chroma', 'wave', 'fog', 'sunburst', 'dome', 'em
 const cfg = store(MODULE_ID, 'lightAdjuster', { curve: CURVE });
 const log = (...a) => console.log('VMT Lights |', ...a);
 
-const normColor = (c) => { c = String(c ?? '').trim().toLowerCase(); return c && !c.startsWith('#') ? `#${c}` : c; };
+const normColor = (c) => { c = String(c ?? '').trim().toLowerCase(); return c && !c.startsWith('#') ? `#${c}` : c; }; /* adds hash */
 const lightColor = (d) => d.config?.color ?? d.config?.tintColor ?? d.tintColor ?? d.color ?? d._source?.config?.color ?? d._source?.color; /* every Foundry shape */
 const clamp01 = (n) => Math.max(0, Math.min(1, Number(n) || 0));
 const tagOf = (d) => d.getFlag(MODULE_ID, 'tag');
@@ -17,15 +17,15 @@ const selectedIds = () => new Set((canvas.lighting?.controlled ?? []).map((p) =>
 /* "7:00 PM" to 19.0, null when unparsable */
 function timeToHour(s) {
   const m = String(s ?? '').match(/(\d+):(\d+)\s*(AM|PM)/i);
-  return m ? parseInt(m[1]) % 12 + (m[3].toUpperCase() === 'PM' ? 12 : 0) + parseInt(m[2]) / 60 : null;
+  return m ? parseInt(m[1]) % 12 + (m[3].toUpperCase() === 'PM' ? 12 : 0) + parseInt(m[2]) / 60 : null; /* unparsable: null */
 }
 
 /* Linear interpolation over the stored curve */
 function hourToDark(hour) {
   const curve = cfg.get().curve ?? CURVE, keys = Object.keys(curve).map(Number).sort((a, b) => a - b);
   let lo = keys[0], hi = keys.at(-1);
-  for (let i = 0; i < keys.length - 1; i++) if (hour >= keys[i] && hour <= keys[i + 1]) { lo = keys[i]; hi = keys[i + 1]; break; }
-  return curve[lo] + (curve[hi] - curve[lo]) * (hi > lo ? (hour - lo) / (hi - lo) : 0);
+  for (let i = 0; i < keys.length - 1; i++) if (hour >= keys[i] && hour <= keys[i + 1]) { lo = keys[i]; hi = keys[i + 1]; break; } /* in: key pairs, out: bracket */
+  return curve[lo] + (curve[hi] - curve[lo]) * (hi > lo ? (hour - lo) / (hi - lo) : 0); /* flat span: zero */
 }
 
 /* Filtered lights, shared by preview and apply */
@@ -61,7 +61,7 @@ class LightsApp extends VmtApp {
       selected: `<p class="hint">${L('Lights.SelectedInfo')}</p>`,
       all: `<p class="hint warn">${L('Lights.AllWarn')}</p>`,
     };
-    const dark = this.mode === 'time'
+    const dark = this.mode === 'time' /* time, else raw */
       ? `<div class="grid2">${field('onTime', 'OnAt', 'text', `placeholder="${L('Lights.OnPh')}"`)}${field('offTime', 'OffAt', 'text', `placeholder="${L('Lights.OffPh')}"`)}</div><p class="hint" data-prev="dark">${this.calc()}</p>`
       : `<div class="grid2">${field('minDark', 'MinDark', 'number', 'min="0" max="1" step="0.05"')}${field('maxDark', 'MaxDark', 'number', 'min="0" max="1" step="0.05"')}</div>`;
     const props = gate('chkColor', 'Color', `<input type="color" name="newColor" value="${esc(f.newColor)}" ${dis('chkColor')}>`)
@@ -81,8 +81,8 @@ class LightsApp extends VmtApp {
 
   sync() { Object.assign(this.f, this.form()); } /* fields survive rerender */
   count() { return L(`Lights.Match.${this.filter}`, { n: match(this.filter, this.f).length }); }
-  calc() { const off = timeToHour(this.f.offTime); return timeToHour(this.f.onTime) === null || off === null ? L('Lights.BadTime') : L('Lights.Calc', { min: hourToDark(off).toFixed(2) }); }
-  preview() { const put = (k, v) => { const el = this.element.querySelector(`[data-prev="${k}"]`); if (el) el.textContent = v; }; put('match', this.count()); if (this.mode === 'time') put('dark', this.calc()); }
+  calc() { const off = timeToHour(this.f.offTime); return timeToHour(this.f.onTime) === null || off === null ? L('Lights.BadTime') : L('Lights.Calc', { min: hourToDark(off).toFixed(2) }); } /* bad time: message */
+  preview() { const put = (k, v) => { const el = this.element.querySelector(`[data-prev="${k}"]`); if (el) el.textContent = v; }; put('match', this.count()); if (this.mode === 'time') put('dark', this.calc()); } /* in: element found, out: text set */
 
   bind(root) {
     super.bind(root);
@@ -92,35 +92,35 @@ class LightsApp extends VmtApp {
 
   act(a, ds) {
     this.sync();
-    if (a === 'apply') return this.apply();
-    if (a === 'filter') this.filter = ds.v;
-    if (a === 'mode') this.mode = ds.v;
+    if (a === 'apply') return this.apply(); /* apply exits, others set state */
+    if (a === 'filter') this.filter = ds.v; /* in: filter action, out: set */
+    if (a === 'mode') this.mode = ds.v; /* in: mode action, out: set */
     return this.render();
   }
 
   async apply() {
     const f = this.f, hits = match(this.filter, f);
-    if (!canvas?.scene) return ui.notifications.warn(L('Lights.NoScene'));
-    if (!hits.length) return ui.notifications.warn(L('Lights.NoMatch', { filter: L(`Lights.Filter.${this.filter}`) }));
-    if (this.filter === 'all' && !(await confirm(L('Lights.Title'), L('Lights.AllAsk', { n: hits.length })))) return ui.notifications.info(L('Lights.Cancelled'));
+    if (!canvas?.scene) return ui.notifications.warn(L('Lights.NoScene')); /* in: no scene, out: warn */
+    if (!hits.length) return ui.notifications.warn(L('Lights.NoMatch', { filter: L(`Lights.Filter.${this.filter}`) })); /* in: no hits, out: warn */
+    if (this.filter === 'all' && !(await confirm(L('Lights.Title'), L('Lights.AllAsk', { n: hits.length })))) return ui.notifications.info(L('Lights.Cancelled')); /* in: unconfirmed all, out: info */
     log(`${hits.length} lights matched (filter: ${this.filter})`);
 
     let min, max = 1;
-    if (this.mode === 'time') { const off = timeToHour(f.offTime); if (timeToHour(f.onTime) === null || off === null) return ui.notifications.error(L('Lights.BadTime')); min = clamp01(hourToDark(off)); log(`Time mode: on at ${f.onTime}, darkness min ${min.toFixed(2)}`); }
+    if (this.mode === 'time') { /* time derives min, else raw */ const off = timeToHour(f.offTime); if (timeToHour(f.onTime) === null || off === null) return ui.notifications.error(L('Lights.BadTime')); min = clamp01(hourToDark(off)); log(`Time mode: on at ${f.onTime}, darkness min ${min.toFixed(2)}`); }
     else { min = clamp01(f.minDark); max = clamp01(f.maxDark); }
 
-    const set = {}, tag = f.chkTag ? f.tagName.trim() : '', props = CHKS.filter((k) => f[k]).length;
-    if (f.chkColor) set['config.color'] = f.newColor;
-    if (f.chkDim) set['config.dim'] = parseFloat(f.dim);
-    if (f.chkBright) set['config.bright'] = parseFloat(f.bright);
-    if (f.chkAlpha) set['config.alpha'] = parseFloat(f.alpha);
-    if (f.chkAnim) { if (f.anim) set['config.animation.type'] = f.anim; else set['config.animation'] = { type: null, speed: 2, intensity: 2, reverse: false }; }
-    if (tag) set[`flags.${MODULE_ID}.tag`] = tag;
+    const set = {}, tag = f.chkTag ? f.tagName.trim() : '', props = CHKS.filter((k) => f[k]).length; /* tag if checked */
+    if (f.chkColor) set['config.color'] = f.newColor; /* checked: color override set */
+    if (f.chkDim) set['config.dim'] = parseFloat(f.dim); /* checked: dim radius set */
+    if (f.chkBright) set['config.bright'] = parseFloat(f.bright); /* checked: bright radius set */
+    if (f.chkAlpha) set['config.alpha'] = parseFloat(f.alpha); /* checked: alpha set */
+    if (f.chkAnim) { if (f.anim) set['config.animation.type'] = f.anim; else set['config.animation'] = { type: null, speed: 2, intensity: 2, reverse: false }; } /* none clears animation */
+    if (tag) set[`flags.${MODULE_ID}.tag`] = tag; /* in: tag set, out: flag key */
     const updates = hits.map((d) => ({ _id: d.id, 'config.darkness.min': min, 'config.darkness.max': max, 'darkness.min': min, 'darkness.max': max, ...set })); /* root darkness = legacy path */
 
-    try { await canvas.scene.updateEmbeddedDocuments('AmbientLight', updates); }
-    catch (err) { console.error('VMT Lights |', err); return ui.notifications.error(L('Lights.Failed')); }
-    ui.notifications.info(L('Lights.Done', { n: hits.length, min: min.toFixed(2), max: max.toFixed(2) }) + (props ? L('Lights.DoneProps', { n: props }) : '') + (tag ? L('Lights.DoneTag', { tag }) : ''));
+    try { await canvas.scene.updateEmbeddedDocuments('AmbientLight', updates); } /* writes all light updates */
+    catch (err) { console.error('VMT Lights |', err); return ui.notifications.error(L('Lights.Failed')); } /* write failed: log, notify, exit */
+    ui.notifications.info(L('Lights.Done', { n: hits.length, min: min.toFixed(2), max: max.toFixed(2) }) + (props ? L('Lights.DoneProps', { n: props }) : '') + (tag ? L('Lights.DoneTag', { tag }) : '')); /* props and tag suffixes */
     log(`Done. ${hits.length} lights updated.`);
     this.render();
   }

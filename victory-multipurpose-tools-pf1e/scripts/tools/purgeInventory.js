@@ -15,13 +15,13 @@ export default (vmt) => {
     }
 
     async act(a) {
-      if (a === 'refresh') return this.render();
-      if (a !== 'run') return;
+      if (a === 'refresh') return this.render(); // exit: redraw only
+      if (a !== 'run') return; // exit: unknown action
       const actor = first();
-      if (!actor) return ui.notifications.warn(L('Purge.NoSelection'));
+      if (!actor) return ui.notifications.warn(L('Purge.NoSelection')); // exit: no token
       const ids = physical(actor).map((i) => i.id);
-      if (!ids.length) return ui.notifications.info(L('Purge.None', { name: actor.name }));
-      if (!(await confirm(L('Purge.Title'), L('Purge.Ask', { n: ids.length, name: esc(actor.name) })))) return;
+      if (!ids.length) return ui.notifications.info(L('Purge.None', { name: actor.name })); // exit: nothing to purge
+      if (!(await confirm(L('Purge.Title'), L('Purge.Ask', { n: ids.length, name: esc(actor.name) })))) return; // exit: declined
 
       try { await actor.deleteEmbeddedDocuments('Item', ids); }
       catch (e) { console.error(TAG, 'purge failed:', e); return ui.notifications.error(L('Purge.Fail')); }

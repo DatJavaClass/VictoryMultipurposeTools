@@ -4,7 +4,7 @@ export default (vmt) => {
   const first = () => (canvas.tokens?.controlled ?? []).find((t) => t.actor)?.actor ?? null;
   const prop = (doc, key) => foundry.utils.getProperty(doc, adapter.get()[key]);
   const label = (t) => game.i18n.localize(CONFIG.Item.typeLabels?.[t] ?? t);
-  const rank = (t) => { const o = [...adapter.get().physical, ...adapter.get().features], i = o.indexOf(t); return i < 0 ? o.length : i; }; // physical first, features next
+  const rank = (t) => { const o = [...adapter.get().physical, ...adapter.get().features], i = o.indexOf(t); return i < 0 ? o.length : i; }; // in: type, out: rank
 
   class InspectApp extends App {
     static DEFAULT_OPTIONS = { id: 'vmtp-inspect-inventory', window: { title: 'VMTP.Inspect.Title' }, position: { width: 420, height: 520 } };
@@ -13,10 +13,10 @@ export default (vmt) => {
 
     html() {
       const actor = first();
-      if (!actor) return `<p class="empty">${L('Inspect.NoSelection')}</p>`;
+      if (!actor) return `<p class="empty">${L('Inspect.NoSelection')}</p>`; // exit: empty notice
       const groups = {}, phys = actor.items.filter((i) => adapter.get().physical.includes(i.type)).length;
-      for (const i of actor.items) (groups[i.type] ??= []).push(i);
-      const row = (i) => { const q = prop(i, 'quantity') ?? 1, un = prop(i, 'identified') === false; return `<li>${esc(i.name)}${q > 1 ? `<span class="muted"> x${q}</span>` : ''}${un ? `<span class="unid"> ${L('Inspect.Unid')}</span>` : ''}</li>`; };
+      for (const i of actor.items) (groups[i.type] ??= []).push(i); // in: actor items, out: groups by type
+      const row = (i) => { const q = prop(i, 'quantity') ?? 1, un = prop(i, 'identified') === false; return `<li>${esc(i.name)}${q > 1 ? `<span class="muted"> x${q}</span>` : ''}${un ? `<span class="unid"> ${L('Inspect.Unid')}</span>` : ''}</li>`; }; // in: item, out: li
       const block = ([t, items]) => `<details data-type="${esc(t)}" ${this.shown.has(t) ? 'open' : ''}><summary>${esc(label(t))}<span class="badge">${items.length}</span></summary><ul>${items.map(row).join('')}</ul></details>`;
       const blocks = Object.entries(groups).sort(([a], [b]) => rank(a) - rank(b) || label(a).localeCompare(label(b))).map(block).join('');
       return `<div class="card"><div class="row"><b>${esc(actor.name)}</b><span class="muted end">${L('Inspect.Meta', { items: actor.items.size, phys })}</span></div></div>

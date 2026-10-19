@@ -1,4 +1,4 @@
-/* Loot Search: mode radios, thumbnails, selected row, owners pane, hand card */
+/* Loot Search: radios, thumbs, owners pane, hand card */
 #vmtp-loot-search label.check { flex: 1 1 auto; flex-direction: row; align-items: center; justify-content: center; gap: 6px; padding: 6px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; cursor: pointer; font-size: 0.85em; text-transform: none; letter-spacing: 0; color: #e0e0e0; }
 #vmtp-loot-search label.check:has(input:checked) { border-color: #ffcc33; color: #ffcc33; }
 #vmtp-loot-search label.check input { width: auto; margin: 0; }
